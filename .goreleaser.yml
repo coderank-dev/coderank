@@ -1,0 +1,7 @@
+# Minimal stub — will be expanded when we set up releases
+version: 2
+builds:
+  - main: .
+    binary: coderank
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]

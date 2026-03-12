@@ -1,0 +1,23 @@
+# Binaries
+coderank
+*.exe
+dist/
+
+# Environment
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+coverage.out
+
+# Claude Code
+.claude/settings.local.json
