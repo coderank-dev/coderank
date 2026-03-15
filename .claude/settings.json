@@ -3,8 +3,12 @@
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hook": "bash -c 'FILE=$(echo \"$TOOL_INPUT\" | jq -r .file_path // .path); [[ \"$FILE\" == *.go ]] && golangci-lint run $(dirname \"$FILE\")/... || exit 0'",
-        "description": "Auto-lint Go files after edit"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=$(echo \"$TOOL_INPUT\" | jq -r .file_path // .path); [[ \"$FILE\" == *.go ]] && golangci-lint run $(dirname \"$FILE\")/... || exit 0'"
+          }
+        ]
       }
     ]
   }
