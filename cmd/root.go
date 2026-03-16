@@ -23,6 +23,19 @@ Get started:
   coderank inject         Inject docs into your agent's context`,
 }
 
+// buildVersion holds version info injected at build time via ldflags.
+var buildVersion = struct {
+	version, commit, date string
+}{"dev", "none", "unknown"}
+
+// SetVersion receives build-time version info from main.go.
+func SetVersion(version, commit, date string) {
+	buildVersion.version = version
+	buildVersion.commit = commit
+	buildVersion.date = date
+	rootCmd.Version = version
+}
+
 // Execute runs the root command. Called from main.go.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {

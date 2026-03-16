@@ -1,7 +1,50 @@
-# Minimal stub — will be expanded when we set up releases
 version: 2
+
 builds:
-  - main: .
+  - id: coderank
+    main: .
     binary: coderank
-    goos: [linux, darwin, windows]
-    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.ShortCommit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats: ['tar.gz']
+    format_overrides:
+      - goos: windows
+        formats: ['zip']
+    name_template: "coderank_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+brews:
+  - repository:
+      owner: coderank-dev
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    name: coderank
+    homepage: "https://coderank.ai"
+    description: "AI-optimized library documentation for coding agents"
+    install: |
+      bin.install "coderank"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
