@@ -104,6 +104,9 @@ func NewClient(baseURL string) (*Client, error) {
 
 // Query calls POST /v1/query and returns condensed documentation.
 func (c *Client) Query(req QueryRequest) (*QueryResponse, error) {
+	if req.Library != "" {
+		req.Library = NormalizeLibraryName(req.Library)
+	}
 	body, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling query request: %w", err)
@@ -121,8 +124,23 @@ func (c *Client) Query(req QueryRequest) (*QueryResponse, error) {
 	return &result, nil
 }
 
+// NormalizeLibraryName applies client-side normalization before sending to the API:
+// lowercases and strips common structural suffixes (.js, .ts).
+// This covers case variants and ".js"-suffixed names (e.g. "React.js" → "react").
+// Semantic aliases (e.g. "reactjs" → "react") are resolved server-side via the
+// library_aliases table — they can't be handled safely without a lookup.
+func NormalizeLibraryName(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.ToLower(name)
+	for _, suffix := range []string{".js", ".ts"} {
+		name = strings.TrimSuffix(name, suffix)
+	}
+	return name
+}
+
 // Surface calls GET /v1/surface/:library and returns the API surface file.
 func (c *Client) Surface(library string) (*DocResult, error) {
+	library = NormalizeLibraryName(library)
 	respBody, err := c.doRequest("GET", "/v1/surface/"+url.PathEscape(library), nil)
 	if err != nil {
 		return nil, err

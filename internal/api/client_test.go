@@ -11,6 +11,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestNormalizeLibraryName(t *testing.T) {
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"react", "react"},
+		{"React", "react"},
+		{"React.js", "react"},
+		{"react.js", "react"},
+		{"Vue.ts", "vue"},
+		{"  NextJS  ", "nextjs"},    // spaces trimmed, lowercase — alias resolution is server-side
+		{"tailwindcss", "tailwindcss"}, // canonical name unchanged
+	}
+	for _, tc := range cases {
+		t.Run(tc.input, func(t *testing.T) {
+			assert.Equal(t, tc.want, NormalizeLibraryName(tc.input),
+				"NormalizeLibraryName(%q) should return canonical form", tc.input)
+		})
+	}
+}
+
 func TestNewClientFailsWithoutCredentials(t *testing.T) {
 	// Temporarily point HOME to an empty dir so no credentials file exists
 	origHome := os.Getenv("HOME")
