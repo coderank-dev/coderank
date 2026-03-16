@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,6 +47,12 @@ func init() {
 	viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 	viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	viper.BindPFlag("offline", rootCmd.PersistentFlags().Lookup("offline"))
+}
+
+// IsRawMode returns true when output should be plain markdown —
+// either --raw was passed explicitly, or stdout is not a TTY (piped).
+func IsRawMode() bool {
+	return viper.GetBool("raw") || !isatty.IsTerminal(os.Stdout.Fd())
 }
 
 // initConfig reads in config file and ENV variables if set.
