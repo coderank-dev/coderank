@@ -141,3 +141,41 @@ func (m *Manager) Stats() (fileCount int, totalTokens int, err error) {
 	err = row.Scan(&fileCount, &totalTokens)
 	return
 }
+
+// Libraries returns the distinct library names present in the cache.
+func (m *Manager) Libraries() ([]string, error) {
+	rows, err := m.db.Query("SELECT DISTINCT library FROM cached_files ORDER BY library")
+	if err != nil {
+		return nil, fmt.Errorf("listing cached libraries: %w", err)
+	}
+	defer rows.Close()
+
+	var libs []string
+	for rows.Next() {
+		var lib string
+		if err := rows.Scan(&lib); err != nil {
+			return nil, err
+		}
+		libs = append(libs, lib)
+	}
+	return libs, nil
+}
+
+// Clear removes all cached files from disk and clears the database.
+func (m *Manager) Clear() error {
+	// Delete all files under baseDir (library subdirectories)
+	entries, err := os.ReadDir(m.baseDir)
+	if err != nil {
+		return fmt.Errorf("reading cache dir: %w", err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() {
+			if err := os.RemoveAll(filepath.Join(m.baseDir, entry.Name())); err != nil {
+				return fmt.Errorf("removing cached library %s: %w", entry.Name(), err)
+			}
+		}
+	}
+
+	_, err = m.db.Exec("DELETE FROM cached_files")
+	return err
+}
