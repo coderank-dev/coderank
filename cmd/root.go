@@ -4,6 +4,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
@@ -75,6 +76,7 @@ func initConfig() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("$HOME/.coderank")
 	viper.SetEnvPrefix("CODERANK")
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 
 	// It's fine if no config file exists — first-time users won't have one
