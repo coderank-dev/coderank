@@ -15,8 +15,8 @@ import (
 // and renders it in the terminal. This is the command developers use most —
 // it's the equivalent of "give me the docs for X."
 var fetchCmd = &cobra.Command{
-	Use:   "fetch <query>",
-	Short: "Fetch condensed documentation for a library",
+	Use:   "query <query>",
+	Short: "Query condensed documentation for a library",
 	Long: `Queries the CodeRank API for condensed library documentation and renders
 it in the terminal with syntax-highlighted code blocks.
 
@@ -25,12 +25,12 @@ finds the most relevant documentation files and assembles them within
 your token budget.
 
 Examples:
-  coderank fetch "react hooks"
-  coderank fetch "nextjs middleware authentication" --max-tokens 3000
-  coderank fetch "prisma migrations" --library prisma
-  coderank fetch "react hooks" --raw | pbcopy     # pipe to clipboard
-  coderank fetch "react hooks" --json              # structured output`,
-	Aliases: []string{"f", "get"},
+  coderank query "react hooks"
+  coderank query "nextjs middleware authentication" --max-tokens 3000
+  coderank query "prisma migrations" --library prisma
+  coderank query "react hooks" --raw | pbcopy     # pipe to clipboard
+  coderank query "react hooks" --json              # structured output`,
+	Aliases: []string{"fetch", "f", "get"},
 	Args:    cobra.MinimumNArgs(1),
 	RunE:    runFetch,
 }

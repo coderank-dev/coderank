@@ -19,9 +19,9 @@ var rootCmd = &cobra.Command{
 Fetch library docs, manage your stack config, and inject context — all from the CLI.
 
 Get started:
-  coderank init           Set up .coderank.yml for your project
-  coderank fetch react    Fetch React documentation
-  coderank inject         Inject docs into your agent's context`,
+  coderank init              Set up .coderank.yml for your project
+  coderank query react hooks Query React documentation
+  coderank inject            Inject docs into your agent's context`,
 }
 
 // buildVersion holds version info injected at build time via ldflags.
