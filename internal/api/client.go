@@ -65,6 +65,22 @@ type DocResult struct {
 	Content string `json:"content"`
 }
 
+// TopicResponse is the response from GET /v1/topic/:library/:topic.
+type TopicResponse struct {
+	Library string `json:"library"`
+	Version string `json:"version"`
+	Topic   string `json:"topic"`
+	Tokens  int    `json:"tokens"`
+	Content string `json:"content"`
+}
+
+// TopicsResponse is the response from GET /v1/topics/:library.
+type TopicsResponse struct {
+	Library string   `json:"library"`
+	Version string   `json:"version"`
+	Topics  []string `json:"topics"`
+}
+
 // HealthResponse is the response from GET /v1/health/:library.
 type HealthResponse struct {
 	Library     string         `json:"library"`
@@ -136,6 +152,35 @@ func NormalizeLibraryName(name string) string {
 		name = strings.TrimSuffix(name, suffix)
 	}
 	return name
+}
+
+// Topic calls GET /v1/topic/:library/:topic and returns the full topic content.
+func (c *Client) Topic(library, topic string) (*TopicResponse, error) {
+	library = NormalizeLibraryName(library)
+	path := "/v1/topic/" + url.PathEscape(library) + "/" + url.PathEscape(topic)
+	respBody, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	var result TopicResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("parsing topic response: %w", err)
+	}
+	return &result, nil
+}
+
+// Topics calls GET /v1/topics/:library and returns the list of available topics.
+func (c *Client) Topics(library string) (*TopicsResponse, error) {
+	library = NormalizeLibraryName(library)
+	respBody, err := c.doRequest("GET", "/v1/topics/"+url.PathEscape(library), nil)
+	if err != nil {
+		return nil, err
+	}
+	var result TopicsResponse
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, fmt.Errorf("parsing topics response: %w", err)
+	}
+	return &result, nil
 }
 
 // Surface calls GET /v1/surface/:library and returns the API surface file.

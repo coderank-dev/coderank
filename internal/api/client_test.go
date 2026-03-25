@@ -66,6 +66,56 @@ func TestClientHandlesAPIErrors(t *testing.T) {
 		"should propagate the API error message to the user")
 }
 
+func TestClientParsesTopicResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/v1/topic/react/hooks", r.URL.Path)
+
+		w.Write([]byte(`{"library":"react","version":"19.1.0","topic":"hooks","tokens":1200,"content":"# Hooks\n\nuseState docs."}`))
+	}))
+	defer server.Close()
+
+	home := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", home)
+	defer os.Setenv("HOME", origHome)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".coderank"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".coderank", "credentials"), []byte("cr_sk_test"), 0600))
+
+	client, err := NewClient(server.URL)
+	require.NoError(t, err)
+
+	resp, err := client.Topic("react", "hooks")
+	require.NoError(t, err)
+	assert.Equal(t, "react", resp.Library)
+	assert.Equal(t, "hooks", resp.Topic)
+	assert.Equal(t, 1200, resp.Tokens)
+}
+
+func TestClientParsesTopicsResponse(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "GET", r.Method)
+		assert.Equal(t, "/v1/topics/react", r.URL.Path)
+
+		w.Write([]byte(`{"library":"react","version":"19.1.0","topics":["hooks","components","routing"]}`))
+	}))
+	defer server.Close()
+
+	home := t.TempDir()
+	origHome := os.Getenv("HOME")
+	os.Setenv("HOME", home)
+	defer os.Setenv("HOME", origHome)
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".coderank"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".coderank", "credentials"), []byte("cr_sk_test"), 0600))
+
+	client, err := NewClient(server.URL)
+	require.NoError(t, err)
+
+	resp, err := client.Topics("react")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"hooks", "components", "routing"}, resp.Topics)
+}
+
 func TestClientParsesQueryResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "POST", r.Method)
