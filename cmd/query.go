@@ -11,30 +11,12 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(queryCmd)
 	rootCmd.AddCommand(topicCmd)
 	rootCmd.AddCommand(searchCmd)
 	rootCmd.AddCommand(gotchasCmd)
 	rootCmd.AddCommand(topicsCmd)
 
-	queryCmd.Flags().IntP("max-tokens", "t", 3000, "Maximum tokens in response")
 	searchCmd.Flags().IntP("max-tokens", "t", 5000, "Maximum tokens in response")
-}
-
-// queryCmd fetches condensed docs for a specific API by name.
-var queryCmd = &cobra.Command{
-	Use:   "query <lib> <api-name>",
-	Short: "Condensed docs for a specific API",
-	Long: `Fetches condensed documentation for a specific API or function name.
-Uses semantic search to find the most relevant topic, then returns
-the condensed content within your token budget.
-
-Examples:
-  coderank query zod schema
-  coderank query react useState
-  coderank query express Router --max-tokens 2000`,
-	Args: cobra.ExactArgs(2),
-	RunE: runQuery,
 }
 
 // topicCmd fetches a full topic file by name.
@@ -95,28 +77,6 @@ Examples:
   coderank topics express`,
 	Args: cobra.ExactArgs(1),
 	RunE: runTopics,
-}
-
-func runQuery(cmd *cobra.Command, args []string) error {
-	lib, apiName := args[0], args[1]
-	maxTokens, _ := cmd.Flags().GetInt("max-tokens")
-
-	client, err := api.NewClient(viper.GetString("api-url"))
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.Query(api.QueryRequest{
-		Q:         apiName,
-		MaxTokens: maxTokens,
-		Library:   lib,
-	})
-	if err != nil {
-		render.ErrorMsg("%s", err.Error())
-		return err
-	}
-
-	return printQueryResponse(resp)
 }
 
 func runTopic(cmd *cobra.Command, args []string) error {
