@@ -16,7 +16,7 @@ func init() {
 	rootCmd.AddCommand(gotchasCmd)
 	rootCmd.AddCommand(topicsCmd)
 
-	searchCmd.Flags().IntP("max-tokens", "t", 5000, "Maximum tokens in response")
+	searchCmd.Flags().IntP("max-tokens", "t", 10000, "Maximum tokens in response")
 }
 
 // topicCmd fetches a full topic file by name.
