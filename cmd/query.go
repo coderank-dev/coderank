@@ -198,6 +198,9 @@ func printQueryResponse(resp *api.QueryResponse) error {
 	}
 
 	for _, result := range resp.Results {
+		if result.Content == "" {
+			continue
+		}
 		fmt.Print(render.DocHeader(result.Library, result.Version, result.Topic, result.Tokens, result.Score))
 		rendered, err := render.RenderMarkdown(result.Content)
 		if err != nil {
