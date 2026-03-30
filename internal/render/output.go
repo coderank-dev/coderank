@@ -42,8 +42,9 @@ func Rendered(md string, title string, statusLine string) {
 }
 
 // DocHeader renders a styled header showing library name, version, topic,
-// and token count. Displayed above the Glamour-rendered markdown content.
-func DocHeader(library, version, topic string, tokens int) string {
+// token count, and relevance score. Displayed above the Glamour-rendered markdown content.
+// score is 0–100; pass 0 to omit it.
+func DocHeader(library, version, topic string, tokens, score int) string {
 	var parts []string
 	parts = append(parts, Title.Render(library+"@"+version))
 	if topic != "" && topic != "_api-surface" {
@@ -51,6 +52,9 @@ func DocHeader(library, version, topic string, tokens int) string {
 	}
 	if tokens > 0 {
 		parts = append(parts, Subtle.Render(fmt.Sprintf(" (%d tokens)", tokens)))
+	}
+	if score > 0 {
+		parts = append(parts, Subtle.Render(fmt.Sprintf(" · %d%% match", score)))
 	}
 	return strings.Join(parts, "") + "\n"
 }

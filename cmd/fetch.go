@@ -106,7 +106,7 @@ func runFetch(cmd *cobra.Command, args []string) error {
 	// Default: rendered markdown with Lip Gloss chrome
 	for _, result := range resp.Results {
 		fmt.Print(render.DocHeader(
-			result.Library, result.Version, result.Topic, result.Tokens,
+			result.Library, result.Version, result.Topic, result.Tokens, result.Score,
 		))
 		rendered, err := render.RenderMarkdown(result.Content)
 		if err != nil {

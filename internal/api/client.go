@@ -62,6 +62,7 @@ type DocResult struct {
 	Topic   string `json:"topic"`
 	Type    string `json:"type"`
 	Tokens  int    `json:"tokens"`
+	Score   int    `json:"score"`
 	Content string `json:"content"`
 }
 
