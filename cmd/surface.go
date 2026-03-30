@@ -60,7 +60,7 @@ func runSurface(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Print(render.DocHeader(result.Library, result.Version, "API Surface", result.Tokens))
+	fmt.Print(render.DocHeader(result.Library, result.Version, "API Surface", result.Tokens, 0))
 	rendered, err := render.RenderMarkdown(result.Content)
 	if err != nil {
 		fmt.Print(result.Content)

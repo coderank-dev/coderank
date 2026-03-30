@@ -98,7 +98,7 @@ func runTopic(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Print(render.DocHeader(resp.Library, resp.Version, resp.Topic, resp.Tokens))
+	fmt.Print(render.DocHeader(resp.Library, resp.Version, resp.Topic, resp.Tokens, 0))
 	rendered, err := render.RenderMarkdown(resp.Content)
 	if err != nil {
 		fmt.Print(resp.Content)
@@ -175,7 +175,7 @@ func runTopics(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	fmt.Print(render.DocHeader(resp.Library, resp.Version, "topics", 0))
+	fmt.Print(render.DocHeader(resp.Library, resp.Version, "topics", 0, 0))
 	for _, topic := range resp.Topics {
 		fmt.Printf("  • %s\n", topic)
 	}
@@ -198,7 +198,7 @@ func printQueryResponse(resp *api.QueryResponse) error {
 	}
 
 	for _, result := range resp.Results {
-		fmt.Print(render.DocHeader(result.Library, result.Version, result.Topic, result.Tokens))
+		fmt.Print(render.DocHeader(result.Library, result.Version, result.Topic, result.Tokens, result.Score))
 		rendered, err := render.RenderMarkdown(result.Content)
 		if err != nil {
 			fmt.Print(result.Content)
