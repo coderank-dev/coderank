@@ -32,6 +32,16 @@ func TestStripCodeFenceLanguages(t *testing.T) {
 			input: "~~~bash\necho hi\n~~~",
 			want:  "~~~\necho hi\n~~~",
 		},
+		{
+			name:  "strips language and indent from 4-space indented fence",
+			input: "    ```typescript\n    const x = 1\n    ```",
+			want:  "```\n    const x = 1\n```",
+		},
+		{
+			name:  "de-indents plain 4-space fence closing",
+			input: "```typescript\nconst x = 1\n    ```",
+			want:  "```\nconst x = 1\n```",
+		},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

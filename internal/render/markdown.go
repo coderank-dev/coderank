@@ -2,19 +2,23 @@ package render
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/charmbracelet/glamour"
 )
 
-// codeFenceLangRe matches fenced code block opening lines with a language identifier.
-var codeFenceLangRe = regexp.MustCompile("(?m)^(```|~~~)\\w+")
+// codeFenceLangRe matches any fenced code block fence line, including lines with
+// leading whitespace (e.g. LLM-generated "    ```typescript" from the "indented 4
+// spaces" template instruction). Captures: leading whitespace, fence chars, language.
+var codeFenceLangRe = regexp.MustCompile("(?m)^[ \t]*(`{3,}|~{3,})\\w*[ \t]*$")
 
-// stripCodeFenceLanguages removes language identifiers from fenced code blocks
-// (e.g. "```typescript" → "```") because Glamour renders the identifier as
-// visible plain text rather than using it for syntax highlighting.
+// stripCodeFenceLanguages normalises fenced code block fence lines:
+//   - removes language identifiers (Glamour shows them as visible plain text)
+//   - strips leading whitespace from fence lines (4-space-indented fences are treated
+//     by Markdown parsers as indented code blocks, making the backticks render literally)
 func stripCodeFenceLanguages(md string) string {
 	return codeFenceLangRe.ReplaceAllStringFunc(md, func(match string) string {
-		if match[0] == '`' {
+		if strings.Contains(match, "`") {
 			return "```"
 		}
 		return "~~~"
