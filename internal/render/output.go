@@ -91,6 +91,9 @@ func DocHeader(library, version, topic string, tokens, score int) string {
 // DocFooter renders a styled footer with query metadata.
 func DocFooter(totalTokens, queryMs int) string {
 	timing := lipgloss.NewStyle().Foreground(Accent).Bold(true).Render(fmt.Sprintf("⚡ %dms", queryMs))
+	if totalTokens <= 0 {
+		return "\n" + timing + "\n"
+	}
 	tokens := Subtle.Render(fmt.Sprintf("%s tokens total", formatInt(totalTokens)))
 	return "\n" + timing + Subtle.Render("  ·  ") + tokens + "\n"
 }
