@@ -27,7 +27,7 @@ func HealthDisplay(h *api.HealthResponse) string {
 		{"🔧", "Maintenance", "maintenance"},
 		{"🔒", "Security", "security"},
 		{"👥", "Community", "community"},
-		{"♻️ ", "Sustainability", "sustainability"},
+		{"🔄", "Sustainability", "sustainability"},
 	}
 
 	labelWidth := lipgloss.NewStyle().Width(19)
