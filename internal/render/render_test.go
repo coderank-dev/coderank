@@ -57,6 +57,17 @@ func TestRenderMarkdown_RendersHeading(t *testing.T) {
 		"Glamour should produce non-empty output for valid markdown")
 }
 
+func TestStripFrontmatter(t *testing.T) {
+	input := "---\nlibrary: thiserror\nversion: 2.0.18\ntokens: 0\n---\n\n# derive(Error)\n\nContent here."
+	result := StripFrontmatter(input)
+	assert.Equal(t, "# derive(Error)\n\nContent here.", result,
+		"should strip YAML frontmatter block and leave only markdown body")
+
+	noFrontmatter := "# Just markdown\n\nNo frontmatter."
+	assert.Equal(t, noFrontmatter, StripFrontmatter(noFrontmatter),
+		"should leave content unchanged when no frontmatter present")
+}
+
 func TestDocBox_HasRoundedBorder(t *testing.T) {
 	rendered := DocBox.Render("test content")
 	assert.NotEmpty(t, rendered,

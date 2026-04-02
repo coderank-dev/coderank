@@ -99,9 +99,10 @@ func runTopic(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Print(render.DocHeader(resp.Library, resp.Version, resp.Topic, resp.Tokens, 0))
-	rendered, err := render.RenderMarkdown(resp.Content)
+	body := render.StripFrontmatter(resp.Content)
+	rendered, err := render.RenderMarkdown(body)
 	if err != nil {
-		fmt.Print(resp.Content)
+		fmt.Print(body)
 	} else {
 		fmt.Print(rendered)
 	}
@@ -202,9 +203,10 @@ func printQueryResponse(resp *api.QueryResponse) error {
 			continue
 		}
 		fmt.Print(render.DocHeader(result.Library, result.Version, result.Topic, result.Tokens, result.Score))
-		rendered, err := render.RenderMarkdown(result.Content)
+		body := render.StripFrontmatter(result.Content)
+		rendered, err := render.RenderMarkdown(body)
 		if err != nil {
-			fmt.Print(result.Content)
+			fmt.Print(body)
 		} else {
 			fmt.Print(rendered)
 		}

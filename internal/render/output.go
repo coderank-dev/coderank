@@ -9,6 +9,21 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// StripFrontmatter removes the YAML frontmatter block (--- ... ---) from
+// markdown content before rendering. Returns the body unchanged if no
+// frontmatter is found.
+func StripFrontmatter(content string) string {
+	if !strings.HasPrefix(content, "---\n") {
+		return content
+	}
+	rest := content[4:]
+	end := strings.Index(rest, "\n---\n")
+	if end == -1 {
+		return content
+	}
+	return strings.TrimLeft(rest[end+5:], "\n")
+}
+
 // Markdown outputs plain markdown to stdout (for piping to agents).
 // This is the preferred output for agent consumption — more compact than JSON.
 func Markdown(md string) {
