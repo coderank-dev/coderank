@@ -74,7 +74,7 @@ func TestRootSkillMDContent(t *testing.T) {
 	assert.NotContains(t, content, "allowed-tools")
 
 	// Documentation commands
-	assert.Contains(t, content, "coderank fetch")
+	assert.Contains(t, content, "coderank query")
 	assert.Contains(t, content, "coderank query")
 	assert.Contains(t, content, "coderank surface")
 	assert.Contains(t, content, "coderank health")

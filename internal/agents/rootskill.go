@@ -18,11 +18,11 @@ Pre-processed for AI context windows: only signatures, usage patterns, gotchas, 
 
 ` + "```" + `bash
 # Query a specific API — returns signatures, usage, gotchas
-coderank fetch <library> "<api or question>"
+coderank query <library> "<api or question>"
 # Examples:
-#   coderank fetch react "useCallback vs useMemo"
-#   coderank fetch express "error handling middleware"
-#   coderank fetch gin "route grouping"
+#   coderank query react "useCallback vs useMemo"
+#   coderank query express "error handling middleware"
+#   coderank query gin "route grouping"
 
 # Get full topic content by name
 coderank query <library> <topic>
@@ -75,7 +75,7 @@ coderank cache clear <library>   # Remove from cache
 
 ## When to Use
 
-- **Developer imports a library** → ` + "`coderank fetch`" + ` for the API they're using
+- **Developer imports a library** → ` + "`coderank query`" + ` for the API they're using
 - **Working in a feature area** → ` + "`coderank query`" + ` for grouped context
 - **Need all public APIs at a glance** → ` + "`coderank surface`" + ` for compact signatures
 - **Checking library quality** → ` + "`coderank health`" + ` for maintenance score
