@@ -70,14 +70,24 @@ func TestRootSkillMDContent(t *testing.T) {
 
 	assert.True(t, strings.HasPrefix(content, "---\n"))
 	assert.Contains(t, content, "name: coderank")
-	assert.Contains(t, content, "allowed-tools: Bash(coderank *)")
+	assert.Contains(t, content, "TRIGGER")
+	assert.NotContains(t, content, "allowed-tools")
 
+	// Documentation commands
+	assert.Contains(t, content, "coderank fetch")
 	assert.Contains(t, content, "coderank query")
-	assert.Contains(t, content, "coderank topic")
-	assert.Contains(t, content, "coderank search")
-	assert.Contains(t, content, "coderank gotchas")
-	assert.Contains(t, content, "coderank topics")
+	assert.Contains(t, content, "coderank surface")
+	assert.Contains(t, content, "coderank health")
+	assert.Contains(t, content, "coderank compare")
+
+	// Agent integration commands
+	assert.Contains(t, content, "coderank install")
+	assert.Contains(t, content, "coderank inject")
+
+	// Setup commands
+	assert.Contains(t, content, "coderank auth")
+	assert.Contains(t, content, "coderank cache")
 
 	estimatedTokens := len(content) / 4
-	assert.Less(t, estimatedTokens, 500, "root skill should be under 500 tokens")
+	assert.Less(t, estimatedTokens, 2000, "root skill should be under 2000 tokens")
 }
