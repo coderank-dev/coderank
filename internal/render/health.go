@@ -38,7 +38,7 @@ func HealthDisplay(h *api.HealthResponse) string {
 		}
 		bar := scoreBar(score)
 		label := labelWidth.Render(cat.emoji + " " + cat.name)
-		sb.WriteString(fmt.Sprintf("  %s %s %s\n",
+		sb.WriteString(fmt.Sprintf("  %s %s %s\n\n",
 			label, bar, scoreStyle(score).Render(fmt.Sprintf("%d", score))))
 	}
 
