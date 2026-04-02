@@ -230,6 +230,17 @@ func (c *Client) Compare(category string, limit int) (*CompareResponse, error) {
 	return &result, nil
 }
 
+// FetchSkill calls GET /v1/skills/:library and returns the SKILL.md content.
+// Used by `coderank install --with-surfaces` to fetch per-library skill files.
+func (c *Client) FetchSkill(library string) (string, error) {
+	library = NormalizeLibraryName(library)
+	respBody, err := c.doRequest("GET", "/v1/skills/"+url.PathEscape(library), nil)
+	if err != nil {
+		return "", err
+	}
+	return string(respBody), nil
+}
+
 // doRequest executes an HTTP request with authentication and error handling.
 func (c *Client) doRequest(method, path string, body io.Reader) ([]byte, error) {
 	req, err := http.NewRequest(method, c.baseURL+path, body)

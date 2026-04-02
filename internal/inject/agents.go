@@ -6,8 +6,8 @@ package inject
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
+
+	"github.com/coderank-dev/coderank/internal/agentdetect"
 )
 
 // Agent represents a detected coding agent and where to write its context.
@@ -33,24 +33,18 @@ func DetectAgents(projectDir string) []Agent {
 	var agents []Agent
 
 	checks := []struct {
-		indicator   string // file or directory to check for
-		isDir       bool
+		indicator   agentdetect.Indicator
 		name        string
 		contextPath string
 	}{
-		{".claude", true, "Claude Code", ".claude/context/coderank-stack.md"},
-		{".cursor", true, "Cursor", ".cursor/rules/coderank-stack.mdc"},
-		{"AGENTS.md", false, "Codex", "AGENTS.md"},
-		{".windsurfrules", false, "Windsurf", ".windsurfrules"},
+		{agentdetect.Indicator{Path: ".claude", IsDir: true}, "Claude Code", ".claude/context/coderank-stack.md"},
+		{agentdetect.Indicator{Path: ".cursor", IsDir: true}, "Cursor", ".cursor/rules/coderank-stack.mdc"},
+		{agentdetect.Indicator{Path: "AGENTS.md", IsDir: false}, "Codex", "AGENTS.md"},
+		{agentdetect.Indicator{Path: ".windsurfrules", IsDir: false}, "Windsurf", ".windsurfrules"},
 	}
 
 	for _, check := range checks {
-		path := filepath.Join(projectDir, check.indicator)
-		info, err := os.Stat(path)
-		if err != nil {
-			continue
-		}
-		if check.isDir && !info.IsDir() {
+		if !check.indicator.IsPresent(projectDir) {
 			continue
 		}
 		agents = append(agents, Agent{
