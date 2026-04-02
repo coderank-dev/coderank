@@ -9,6 +9,7 @@ import (
 	"github.com/coderank-dev/coderank/internal/agents"
 	"github.com/coderank-dev/coderank/internal/api"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var installCmd = &cobra.Command{
@@ -112,7 +113,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 	if len(withSurfaces) > 0 {
 		fmt.Fprintf(os.Stderr, "\nInstalling %d per-library skill(s) with API surfaces...\n", len(withSurfaces))
 
-		apiClient, err := api.NewClient("")
+		apiClient, err := api.NewClient(viper.GetString("api-url"))
 		if err != nil {
 			return fmt.Errorf("creating API client: %w", err)
 		}
