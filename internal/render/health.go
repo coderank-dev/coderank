@@ -30,14 +30,16 @@ func HealthDisplay(h *api.HealthResponse) string {
 		{"♻️ ", "Sustainability", "sustainability"},
 	}
 
+	labelWidth := lipgloss.NewStyle().Width(19)
 	for _, cat := range categories {
 		score, ok := h.Breakdown[cat.key]
 		if !ok {
 			continue
 		}
 		bar := scoreBar(score)
-		sb.WriteString(fmt.Sprintf("  %s %-14s %s %s\n",
-			cat.emoji, cat.name, bar, scoreStyle(score).Render(fmt.Sprintf("%d", score))))
+		label := labelWidth.Render(cat.emoji + " " + cat.name)
+		sb.WriteString(fmt.Sprintf("  %s %s %s\n",
+			label, bar, scoreStyle(score).Render(fmt.Sprintf("%d", score))))
 	}
 
 	if h.Repo != "" {
