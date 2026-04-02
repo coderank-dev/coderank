@@ -13,21 +13,21 @@ import (
 func HealthDisplay(h *api.HealthResponse) string {
 	var sb strings.Builder
 
-	// Title with overall score
-	sb.WriteString(Title.Render(fmt.Sprintf("%s — %d/100", h.Library, h.HealthScore)))
-	sb.WriteString(" ")
-	sb.WriteString(scoreLabel(h.HealthScore))
-	sb.WriteString("\n\n")
+	// Title line: 🏥 react  98/100  ● HEALTHY
+	score := scoreStyle(h.HealthScore).Bold(true).Render(fmt.Sprintf("%d/100", h.HealthScore))
+	sb.WriteString(fmt.Sprintf("🏥 %s  %s  %s\n\n",
+		Title.Render(h.Library), score, scoreLabel(h.HealthScore)))
 
 	// Sub-scores with colored bars
 	categories := []struct {
-		name string
-		key  string
+		emoji string
+		name  string
+		key   string
 	}{
-		{"Maintenance", "maintenance"},
-		{"Security", "security"},
-		{"Community", "community"},
-		{"Sustainability", "sustainability"},
+		{"🔧", "Maintenance", "maintenance"},
+		{"🔒", "Security", "security"},
+		{"👥", "Community", "community"},
+		{"♻️ ", "Sustainability", "sustainability"},
 	}
 
 	for _, cat := range categories {
@@ -36,18 +36,18 @@ func HealthDisplay(h *api.HealthResponse) string {
 			continue
 		}
 		bar := scoreBar(score)
-		sb.WriteString(fmt.Sprintf("  %-16s %s %s\n",
-			cat.name, bar, scoreStyle(score).Render(fmt.Sprintf("%d", score))))
+		sb.WriteString(fmt.Sprintf("  %s %-14s %s %s\n",
+			cat.emoji, cat.name, bar, scoreStyle(score).Render(fmt.Sprintf("%d", score))))
 	}
 
 	if h.Repo != "" {
 		sb.WriteString("\n")
-		sb.WriteString(Subtle.Render(fmt.Sprintf("  repo: %s", h.Repo)))
+		sb.WriteString(Subtle.Render(fmt.Sprintf("  repo: github.com/%s", h.Repo)))
 		sb.WriteString("\n")
 	}
 
 	if h.LastIndexed != "" {
-		sb.WriteString(Subtle.Render(fmt.Sprintf("  last indexed: %s", h.LastIndexed)))
+		sb.WriteString(Subtle.Render(fmt.Sprintf("  indexed: %s", h.LastIndexed)))
 		sb.WriteString("\n")
 	}
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Markdown outputs plain markdown to stdout (for piping to agents).
@@ -46,25 +48,52 @@ func Rendered(md string, title string, statusLine string) {
 // score is 0–100; pass 0 to omit it.
 func DocHeader(library, version, topic string, tokens, score int) string {
 	var parts []string
-	parts = append(parts, Title.Render(library+"@"+version))
-	if topic != "" && topic != "_api-surface" {
-		parts = append(parts, Subtle.Render(" → "+topic))
+
+	lib := "📦 " + Title.Render(library)
+	if version != "" {
+		lib += Subtle.Render(" "+version)
 	}
+	parts = append(parts, lib)
+
+	if topic != "" && topic != "_api-surface" {
+		parts = append(parts, Subtle.Render("  →  "+topic))
+	}
+
+	var meta []string
 	if tokens > 0 {
-		parts = append(parts, Subtle.Render(fmt.Sprintf(" (%d tokens)", tokens)))
+		meta = append(meta, fmt.Sprintf("%s tokens", formatInt(tokens)))
 	}
 	if score > 0 {
-		parts = append(parts, Subtle.Render(fmt.Sprintf(" · %d%% match", score)))
+		meta = append(meta, fmt.Sprintf("%d%% match", score))
 	}
+	if len(meta) > 0 {
+		parts = append(parts, Subtle.Render("  ·  "+strings.Join(meta, "  ·  ")))
+	}
+
 	return strings.Join(parts, "") + "\n"
 }
 
 // DocFooter renders a styled footer with query metadata.
 func DocFooter(totalTokens, queryMs int) string {
-	return Subtle.Render(fmt.Sprintf(
-		"\n─── %d tokens · %dms ───",
-		totalTokens, queryMs,
-	)) + "\n"
+	timing := lipgloss.NewStyle().Foreground(Accent).Bold(true).Render(fmt.Sprintf("⚡ %dms", queryMs))
+	tokens := Subtle.Render(fmt.Sprintf("%s tokens total", formatInt(totalTokens)))
+	return "\n" + timing + Subtle.Render("  ·  ") + tokens + "\n"
+}
+
+// formatInt formats an integer with comma separators (e.g. 2847 → "2,847").
+func formatInt(n int) string {
+	s := fmt.Sprintf("%d", n)
+	if len(s) <= 3 {
+		return s
+	}
+	var result []byte
+	for i, c := range s {
+		if i > 0 && (len(s)-i)%3 == 0 {
+			result = append(result, ',')
+		}
+		result = append(result, byte(c))
+	}
+	return string(result)
 }
 
 // ErrorMsg renders a styled error message to stderr. Red and bold.

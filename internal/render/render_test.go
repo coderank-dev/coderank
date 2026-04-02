@@ -65,8 +65,10 @@ func TestDocBox_HasRoundedBorder(t *testing.T) {
 
 func TestDocHeaderIncludesLibraryAndVersion(t *testing.T) {
 	header := DocHeader("react", "19.1.0", "hooks/state", 1920, 0)
-	assert.Contains(t, header, "react@19.1.0",
-		"header should show library@version")
-	assert.Contains(t, header, "1920",
-		"header should show token count")
+	assert.Contains(t, header, "react",
+		"header should show library name")
+	assert.Contains(t, header, "19.1.0",
+		"header should show version")
+	assert.Contains(t, header, "1,920",
+		"header should show comma-formatted token count")
 }

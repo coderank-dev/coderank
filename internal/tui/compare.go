@@ -24,6 +24,7 @@ type CompareModel struct {
 // Columns: Library, Score, Maintenance, Security, Community, Sustainability.
 func NewCompareModel(resp *api.CompareResponse) CompareModel {
 	columns := []table.Column{
+		{Title: "#", Width: 3},
 		{Title: "Library", Width: 20},
 		{Title: "Score", Width: 8},
 		{Title: "Maint.", Width: 8},
@@ -32,10 +33,24 @@ func NewCompareModel(resp *api.CompareResponse) CompareModel {
 		{Title: "Sustain.", Width: 10},
 	}
 
+	rankColors := []lipgloss.Color{
+		lipgloss.Color("#22D3EE"), // 1st — cyan
+		lipgloss.Color("#818CF8"), // 2nd — blue
+		lipgloss.Color("#C084FC"), // 3rd — purple
+		lipgloss.Color("#FB923C"), // 4th — orange
+		lipgloss.Color("#8888A0"), // 5th+ — muted
+	}
+
 	var rows []table.Row
-	for _, lib := range resp.Libraries {
+	for i, lib := range resp.Libraries {
+		colorIdx := i
+		if colorIdx >= len(rankColors) {
+			colorIdx = len(rankColors) - 1
+		}
+		name := lipgloss.NewStyle().Foreground(rankColors[colorIdx]).Render(lib.Library)
 		rows = append(rows, table.Row{
-			lib.Library,
+			fmt.Sprintf("%d.", i+1),
+			name,
 			fmt.Sprintf("%d", lib.HealthScore),
 			fmt.Sprintf("%d", lib.Breakdown["maintenance"]),
 			fmt.Sprintf("%d", lib.Breakdown["security"]),
@@ -98,7 +113,7 @@ func (m CompareModel) View() string {
 
 	var sb strings.Builder
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#22D3EE")).
-		Render(fmt.Sprintf("Compare: %s", m.category))
+		Render(fmt.Sprintf("⚖️  Compare: %s", m.category))
 	sb.WriteString(title + "\n\n")
 	sb.WriteString(m.table.View())
 	sb.WriteString("\n")
