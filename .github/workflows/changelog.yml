@@ -7,6 +7,11 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to generate changelog for (e.g. v0.1.0)'
+        required: true
 
 permissions:
   contents: read
@@ -33,8 +38,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
         run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
           changelog \
-            --version "${{ github.ref_name }}" \
+            --version "$VERSION" \
             --token "$GITHUB_TOKEN" \
             --org coderank-dev \
             --repos coderank,api,pipeline \
@@ -44,7 +50,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
         run: |
-          VERSION="${{ github.ref_name }}"
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
           VERSION_CLEAN="${VERSION#v}"
           MDX_FILE="dist/${VERSION_CLEAN}.mdx"
 
