@@ -1,0 +1,72 @@
+name: Generate Changelog
+
+# Fires when GoReleaser creates a new CLI release tag.
+# Aggregates conventional commits from coderank + api + pipeline,
+# generates MDX + markdown, and opens a PR on the web repo.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  changelog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache: false
+
+      - name: Build changelog tool
+        run: |
+          cd .github/tools/changelog
+          GOWORK=off go build -o /usr/local/bin/changelog .
+
+      - name: Generate changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
+        run: |
+          changelog \
+            --version "${{ github.ref_name }}" \
+            --token "$GITHUB_TOKEN" \
+            --org coderank-dev \
+            --repos coderank,api,pipeline \
+            --out ./dist
+
+      - name: Open PR on web repo
+        env:
+          GH_TOKEN: ${{ secrets.ORG_GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.ref_name }}"
+          VERSION_CLEAN="${VERSION#v}"
+          MDX_FILE="dist/${VERSION_CLEAN}.mdx"
+
+          # Clone web repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/coderank-dev/web.git /tmp/web
+          cd /tmp/web
+
+          # Copy MDX into content directory (consumed by changelog page)
+          mkdir -p src/content/changelog
+          cp "$GITHUB_WORKSPACE/${MDX_FILE}" "src/content/changelog/${VERSION_CLEAN}.mdx"
+
+          # Create branch and PR
+          BRANCH="changelog/${VERSION_CLEAN}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add src/content/changelog/
+          git commit -m "docs: add changelog entry for v${VERSION_CLEAN}"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "docs: changelog for v${VERSION_CLEAN}" \
+            --body "$(cat $GITHUB_WORKSPACE/dist/changelog-${VERSION_CLEAN}.md)" \
+            --base main \
+            --head "$BRANCH"
