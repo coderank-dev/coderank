@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/coderank-dev/coderank/compare/v0.1.1...v0.1.2) (2026-04-07)
+
+
+### Features
+
+* inject skills by default, --surface flag appends full surface ([#41](https://github.com/coderank-dev/coderank/issues/41)) ([125104c](https://github.com/coderank-dev/coderank/commit/125104c61f796a2c6f26e2d2cb1031e0344e6a99))
+
 ## [0.1.1](https://github.com/coderank-dev/coderank/compare/v0.1.0...v0.1.1) (2026-04-04)
 
 
