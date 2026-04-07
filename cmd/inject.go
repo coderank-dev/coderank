@@ -44,6 +44,7 @@ func init() {
 	rootCmd.AddCommand(injectCmd)
 	injectCmd.Flags().String("target", "", "Force a specific agent target (claude, cursor, codex, windsurf, generic)")
 	injectCmd.Flags().Bool("watch", false, "Watch dependency files and auto-refresh on changes")
+	injectCmd.Flags().Bool("surface", false, "Append full API surface after each skill (higher token cost)")
 }
 
 func runInject(cmd *cobra.Command, args []string) error {
@@ -84,34 +85,48 @@ func runInject(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Println(render.Title.Render("Injecting stack API surfaces..."))
+	withSurface, _ := cmd.Flags().GetBool("surface")
+
+	fmt.Println(render.Title.Render("Injecting stack skills..."))
 	fmt.Println()
 
-	var surfaces []string
+	var sections []string
 	var totalTokens int
 
 	for _, lib := range libraries {
-		result, err := client.Surface(lib)
+		skill, err := client.FetchSkill(lib)
 		if err != nil {
 			fmt.Printf("  %s %s: %s\n", render.Warning.Render("⚠"), lib, err)
 			continue
 		}
-		surfaces = append(surfaces, result.Content)
-		totalTokens += result.Tokens
-		fmt.Printf("  %s@%s %s\n",
-			lib, result.Version,
-			render.Subtle.Render(fmt.Sprintf("(%d tokens)", result.Tokens)),
+		entry := skill
+		skillTokens := len(strings.Fields(skill)) * 4 / 3
+
+		if withSurface {
+			surface, err := client.Surface(lib)
+			if err != nil {
+				fmt.Printf("  %s %s surface: %s\n", render.Warning.Render("⚠"), lib, err)
+			} else {
+				entry += "\n\n" + surface.Content
+				skillTokens += surface.Tokens
+			}
+		}
+
+		sections = append(sections, entry)
+		totalTokens += skillTokens
+		fmt.Printf("  %s %s\n", lib,
+			render.Subtle.Render(fmt.Sprintf("(%d tokens)", skillTokens)),
 		)
 	}
 
-	if len(surfaces) == 0 {
-		return fmt.Errorf("no API surfaces fetched — check your library names")
+	if len(sections) == 0 {
+		return fmt.Errorf("no skills fetched — check your library names")
 	}
 
 	// Build the context content
 	content := inject.ContextContent{
 		Libraries:   libraries,
-		Body:        strings.Join(surfaces, "\n\n"),
+		Body:        strings.Join(sections, "\n\n---\n\n"),
 		TotalTokens: totalTokens,
 	}
 
@@ -181,26 +196,26 @@ func runWatch(projectDir string, libraries []string, agents []inject.Agent, clie
 
 		fmt.Println(render.Subtle.Render("Re-injecting..."))
 
-		var surfaces []string
+		var sections []string
 		var totalTokens int
 
 		for _, lib := range currentLibs {
-			result, err := client.Surface(lib)
+			skill, err := client.FetchSkill(lib)
 			if err != nil {
 				fmt.Printf("  %s %s: %s\n", render.Warning.Render("⚠"), lib, err)
 				continue
 			}
-			surfaces = append(surfaces, result.Content)
-			totalTokens += result.Tokens
+			sections = append(sections, skill)
+			totalTokens += len(strings.Fields(skill)) * 4 / 3
 		}
 
-		if len(surfaces) == 0 {
-			return fmt.Errorf("no API surfaces fetched")
+		if len(sections) == 0 {
+			return fmt.Errorf("no skills fetched")
 		}
 
 		content := inject.ContextContent{
 			Libraries:   currentLibs,
-			Body:        strings.Join(surfaces, "\n\n"),
+			Body:        strings.Join(sections, "\n\n---\n\n"),
 			TotalTokens: totalTokens,
 		}
 
