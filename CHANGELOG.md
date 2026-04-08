@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.3](https://github.com/coderank-dev/coderank/compare/v0.1.2...v0.1.3) (2026-04-08)
+
+
+### Features
+
+* add project wiki memory + rename fetch→query ([#45](https://github.com/coderank-dev/coderank/issues/45)) ([f9cac24](https://github.com/coderank-dev/coderank/commit/f9cac2488d9f4293655fbf43b5040a3240fc5247))
+
+
+### Bug Fixes
+
+* read Go version from go.mod in release workflow ([#43](https://github.com/coderank-dev/coderank/issues/43)) ([471d10c](https://github.com/coderank-dev/coderank/commit/471d10c10d6bc25e159ceda3df46fc27e0de9a11))
+
 ## [0.1.2](https://github.com/coderank-dev/coderank/compare/v0.1.1...v0.1.2) (2026-04-07)
 
 
