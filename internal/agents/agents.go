@@ -9,6 +9,12 @@ import (
 	"github.com/coderank-dev/coderank/internal/agentdetect"
 )
 
+// Skill name constants used when installing skills into agent directories.
+const (
+	RootSkillName = "coderank"
+	WikiSkillName = "coderank-wiki"
+)
+
 // Agent represents an AI coding agent that supports SKILL.md files.
 type Agent struct {
 	Name      string // display name, e.g. "Claude Code"
@@ -58,6 +64,14 @@ func FindByIDs(ids []string) ([]Agent, []string) {
 		}
 	}
 	return found, unknown
+}
+
+// WriteSkill writes skill content to path, creating parent directories as needed.
+func WriteSkill(path, content string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, []byte(content), 0644)
 }
 
 // SkillPath returns the absolute path for a SKILL.md file.

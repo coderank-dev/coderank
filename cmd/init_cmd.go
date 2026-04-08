@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -226,20 +227,14 @@ func setupWiki() error {
 		return fmt.Errorf("creating wiki directory: %w", err)
 	}
 
-	indexPath := filepath.Join(wikiDir, "index.md")
-	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
-		indexContent := "# Project Wiki Index\n\nPages will appear here as you use `coderank query`.\n"
-		if err := os.WriteFile(indexPath, []byte(indexContent), 0644); err != nil {
-			return fmt.Errorf("writing index.md: %w", err)
-		}
+	indexContent := "# Project Wiki Index\n\nPages will appear here as you use `coderank query`.\n"
+	if err := writeIfNotExists(filepath.Join(wikiDir, "index.md"), indexContent); err != nil {
+		return fmt.Errorf("writing index.md: %w", err)
 	}
 
-	logPath := filepath.Join(wikiDir, "log.md")
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		logContent := fmt.Sprintf("# Wiki Log\n\n[INIT] %s: wiki initialized\n", time.Now().Format("2006-01-02"))
-		if err := os.WriteFile(logPath, []byte(logContent), 0644); err != nil {
-			return fmt.Errorf("writing log.md: %w", err)
-		}
+	logContent := fmt.Sprintf("# Wiki Log\n\n[INIT] %s: wiki initialized\n", time.Now().Format("2006-01-02"))
+	if err := writeIfNotExists(filepath.Join(wikiDir, "log.md"), logContent); err != nil {
+		return fmt.Errorf("writing log.md: %w", err)
 	}
 
 	fmt.Print(render.SuccessMsg("Created .coderank/wiki/"))
@@ -268,17 +263,15 @@ func installSkills(noWiki bool) error {
 	wikiContent := agents.WikiSkillMD()
 
 	for _, agent := range detectedAgents {
-		// Root skill
-		rootPath := agents.SkillPath(projectRoot, agent, "coderank", false)
-		if err := writeSkill(rootPath, rootContent); err != nil {
-			fmt.Fprintf(os.Stderr, "  ✗ %s/coderank: %v\n", agent.ID, err)
+		rootPath := agents.SkillPath(projectRoot, agent, agents.RootSkillName, false)
+		if err := agents.WriteSkill(rootPath, rootContent); err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, agents.RootSkillName, err)
 		}
 
-		// Wiki skill
 		if !noWiki {
-			wikiPath := agents.SkillPath(projectRoot, agent, "coderank-wiki", false)
-			if err := writeSkill(wikiPath, wikiContent); err != nil {
-				fmt.Fprintf(os.Stderr, "  ✗ %s/coderank-wiki: %v\n", agent.ID, err)
+			wikiPath := agents.SkillPath(projectRoot, agent, agents.WikiSkillName, false)
+			if err := agents.WriteSkill(wikiPath, wikiContent); err != nil {
+				fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, agents.WikiSkillName, err)
 			}
 		}
 	}
@@ -287,15 +280,19 @@ func installSkills(noWiki bool) error {
 	return nil
 }
 
-// writeSkill writes skill content to path, creating parent directories as needed.
-func writeSkill(path, content string) error {
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		return fmt.Errorf("creating skill directory: %w", err)
+// writeIfNotExists writes content to path only if the file does not already exist,
+// preserving any existing content on re-runs of coderank init.
+func writeIfNotExists(path, content string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0644)
+	if errors.Is(err, os.ErrExist) {
+		return nil
 	}
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
-		return fmt.Errorf("writing skill file: %w", err)
+	if err != nil {
+		return err
 	}
-	return nil
+	defer f.Close()
+	_, err = f.WriteString(content)
+	return err
 }
 
 // detectLanguage checks for common project files to auto-detect the language.

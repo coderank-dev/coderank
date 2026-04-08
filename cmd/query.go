@@ -11,9 +11,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-// queryCmd queries the CodeRank API for condensed library documentation
-// and renders it in the terminal. This is the command developers use most —
-// it's the equivalent of "give me the docs for X."
 var queryCmd = &cobra.Command{
 	Use:   "query <query>",
 	Short: "Query condensed documentation for a library",

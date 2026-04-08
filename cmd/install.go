@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/coderank-dev/coderank/internal/agents"
@@ -103,11 +102,7 @@ func runInstall(cmd *cobra.Command, args []string) error {
 				fmt.Fprintf(os.Stderr, "  [dry-run] %s → %s\n", lib, path)
 				continue
 			}
-			if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-				fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, lib, err)
-				continue
-			}
-			if err := os.WriteFile(path, []byte(skillContent), 0644); err != nil {
+			if err := agents.WriteSkill(path, skillContent); err != nil {
 				fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, lib, err)
 				continue
 			}
