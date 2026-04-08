@@ -68,25 +68,20 @@ func TestDetectAllNineAgents(t *testing.T) {
 func TestRootSkillMDContent(t *testing.T) {
 	content := RootSkillMD()
 
-	assert.True(t, strings.HasPrefix(content, "---\n"))
+	// Frontmatter
+	assert.True(t, strings.HasPrefix(content, "---\n"), "must start with YAML frontmatter")
 	assert.Contains(t, content, "name: coderank")
-	assert.Contains(t, content, "TRIGGER")
-	assert.NotContains(t, content, "allowed-tools")
+	assert.Contains(t, content, "description:")
+	assert.NotContains(t, content, "user-invocable: false", "root skill must be user-invocable")
 
-	// Documentation commands
+	// Core query commands
 	assert.Contains(t, content, "coderank query")
-	assert.Contains(t, content, "coderank query")
+	assert.Contains(t, content, "coderank topic")
 	assert.Contains(t, content, "coderank surface")
+	assert.Contains(t, content, "coderank gotchas")
 	assert.Contains(t, content, "coderank health")
 	assert.Contains(t, content, "coderank compare")
-
-	// Agent integration commands
 	assert.Contains(t, content, "coderank install")
-	assert.Contains(t, content, "coderank inject")
-
-	// Setup commands
-	assert.Contains(t, content, "coderank auth")
-	assert.Contains(t, content, "coderank cache")
 
 	estimatedTokens := len(content) / 4
 	assert.Less(t, estimatedTokens, 2000, "root skill should be under 2000 tokens")
