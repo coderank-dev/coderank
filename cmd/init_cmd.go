@@ -3,9 +3,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/huh"
+	"github.com/coderank-dev/coderank/internal/agents"
 	"github.com/coderank-dev/coderank/internal/render"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -17,6 +20,7 @@ type CodeRankConfig struct {
 	Context  ContextConfig  `yaml:"context"`
 	Curation CurationConfig `yaml:"curation"`
 	Inject   InjectConfig   `yaml:"inject"`
+	Wiki     WikiConfig     `yaml:"wiki"`
 }
 
 // StackConfig defines the project's technology stack.
@@ -50,18 +54,31 @@ type InjectConfig struct {
 	Agent  string `yaml:"agent"`
 }
 
-// initCmd generates a .coderank.yml config file via interactive wizard.
+// WikiConfig controls the project wiki behavior.
+type WikiConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// initCmd generates a .coderank.yml config file via interactive wizard,
+// creates the .coderank/wiki/ directory, and installs agent skills.
 var initCmd = &cobra.Command{
 	Use:   "init",
-	Short: "Initialize a .coderank.yml config file",
-	Long: `Interactive wizard to generate a .coderank.yml config file for your project.
-Detects your language and framework automatically from package.json or go.mod.
+	Short: "Initialize CodeRank in the current project",
+	Long: `Interactive wizard to set up CodeRank in the current project.
+
+Creates:
+  .coderank.yml          — project config
+  .coderank/wiki/        — project knowledge wiki
+  <agent>/skills/coderank/       — root CodeRank skill
+  <agent>/skills/coderank-wiki/  — wiki skill
 
 Use --non-interactive with flags for CI/script usage.
+Use --no-wiki to skip wiki setup.
 
 Examples:
   coderank init
-  coderank init --non-interactive --language typescript --framework nextjs`,
+  coderank init --non-interactive --language typescript --framework nextjs
+  coderank init --no-wiki`,
 	RunE: runInit,
 }
 
@@ -73,10 +90,12 @@ func init() {
 	initCmd.Flags().StringSlice("preferred", nil, "Preferred libraries")
 	initCmd.Flags().StringSlice("blocked", nil, "Blocked libraries")
 	initCmd.Flags().Int("max-tokens", 5000, "Default token budget per query")
+	initCmd.Flags().Bool("no-wiki", false, "Skip wiki setup")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
 	nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
+	noWiki, _ := cmd.Flags().GetBool("no-wiki")
 
 	// Check for existing config
 	if _, err := os.Stat(".coderank.yml"); err == nil {
@@ -107,6 +126,9 @@ func runInit(cmd *cobra.Command, args []string) error {
 		Inject: InjectConfig{
 			Target: "auto",
 			Agent:  "auto",
+		},
+		Wiki: WikiConfig{
+			Enabled: !noWiki,
 		},
 	}
 
@@ -172,16 +194,107 @@ func runInit(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	// Write .coderank.yml
 	data, err := yaml.Marshal(&config)
 	if err != nil {
 		return fmt.Errorf("marshaling config: %w", err)
 	}
-
 	if err := os.WriteFile(".coderank.yml", data, 0644); err != nil {
 		return fmt.Errorf("writing .coderank.yml: %w", err)
 	}
-
 	fmt.Print(render.SuccessMsg("Created .coderank.yml"))
+
+	// Create wiki directory
+	if !noWiki {
+		if err := setupWiki(); err != nil {
+			return fmt.Errorf("setting up wiki: %w", err)
+		}
+	}
+
+	// Install skills into detected agents
+	if err := installSkills(noWiki); err != nil {
+		return fmt.Errorf("installing skills: %w", err)
+	}
+
+	return nil
+}
+
+// setupWiki creates .coderank/wiki/ with index.md and log.md.
+func setupWiki() error {
+	wikiDir := filepath.Join(".coderank", "wiki")
+	if err := os.MkdirAll(wikiDir, 0755); err != nil {
+		return fmt.Errorf("creating wiki directory: %w", err)
+	}
+
+	indexPath := filepath.Join(wikiDir, "index.md")
+	if _, err := os.Stat(indexPath); os.IsNotExist(err) {
+		indexContent := "# Project Wiki Index\n\nPages will appear here as you use `coderank query`.\n"
+		if err := os.WriteFile(indexPath, []byte(indexContent), 0644); err != nil {
+			return fmt.Errorf("writing index.md: %w", err)
+		}
+	}
+
+	logPath := filepath.Join(wikiDir, "log.md")
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		logContent := fmt.Sprintf("# Wiki Log\n\n[INIT] %s: wiki initialized\n", time.Now().Format("2006-01-02"))
+		if err := os.WriteFile(logPath, []byte(logContent), 0644); err != nil {
+			return fmt.Errorf("writing log.md: %w", err)
+		}
+	}
+
+	fmt.Print(render.SuccessMsg("Created .coderank/wiki/"))
+	return nil
+}
+
+// installSkills installs the root skill and optionally the wiki skill
+// into all detected AI agents in the current project.
+func installSkills(noWiki bool) error {
+	projectRoot, _ := os.Getwd()
+	detectedAgents := agents.Detect(projectRoot)
+
+	if len(detectedAgents) == 0 {
+		fmt.Print(render.WarningMsg("No AI agents detected — skipping skill installation"))
+		fmt.Fprintln(os.Stderr, "  Run 'coderank install <lib>' manually after setting up an agent.")
+		return nil
+	}
+
+	agentNames := make([]string, len(detectedAgents))
+	for i, a := range detectedAgents {
+		agentNames[i] = a.Name
+	}
+	fmt.Fprintf(os.Stderr, "Installing skills → %s\n", strings.Join(agentNames, ", "))
+
+	rootContent := agents.RootSkillMD()
+	wikiContent := agents.WikiSkillMD()
+
+	for _, agent := range detectedAgents {
+		// Root skill
+		rootPath := agents.SkillPath(projectRoot, agent, "coderank", false)
+		if err := writeSkill(rootPath, rootContent); err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ %s/coderank: %v\n", agent.ID, err)
+		}
+
+		// Wiki skill
+		if !noWiki {
+			wikiPath := agents.SkillPath(projectRoot, agent, "coderank-wiki", false)
+			if err := writeSkill(wikiPath, wikiContent); err != nil {
+				fmt.Fprintf(os.Stderr, "  ✗ %s/coderank-wiki: %v\n", agent.ID, err)
+			}
+		}
+	}
+
+	fmt.Print(render.SuccessMsg("Installed CodeRank skills"))
+	return nil
+}
+
+// writeSkill writes skill content to path, creating parent directories as needed.
+func writeSkill(path, content string) error {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("creating skill directory: %w", err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return fmt.Errorf("writing skill file: %w", err)
+	}
 	return nil
 }
 

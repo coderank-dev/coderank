@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,139 +11,69 @@ import (
 	"github.com/spf13/viper"
 )
 
+// queryCmd queries the CodeRank API for condensed library documentation
+// and renders it in the terminal. This is the command developers use most —
+// it's the equivalent of "give me the docs for X."
+var queryCmd = &cobra.Command{
+	Use:   "query <query>",
+	Short: "Query condensed documentation for a library",
+	Long: `Queries the CodeRank API for condensed library documentation and renders
+it in the terminal with syntax-highlighted code blocks.
+
+The query is a natural language description of what you need. CodeRank
+finds the most relevant documentation files and assembles them within
+your token budget.
+
+Examples:
+  coderank query "react hooks"
+  coderank query "nextjs middleware authentication" --max-tokens 3000
+  coderank query "prisma migrations" --library prisma
+  coderank query "react hooks" --raw | pbcopy     # pipe to clipboard
+  coderank query "react hooks" --json              # structured output`,
+	Args: cobra.MinimumNArgs(1),
+	RunE: runQuery,
+}
+
 func init() {
-	rootCmd.AddCommand(topicCmd)
-	rootCmd.AddCommand(searchCmd)
-	rootCmd.AddCommand(gotchasCmd)
-	rootCmd.AddCommand(topicsCmd)
-
-	searchCmd.Flags().IntP("max-tokens", "t", 10000, "Maximum tokens in response")
+	rootCmd.AddCommand(queryCmd)
+	queryCmd.Flags().IntP("max-tokens", "t", 5000, "Maximum tokens in response")
+	queryCmd.Flags().StringP("library", "l", "", "Restrict results to a specific library")
+	viper.BindPFlag("max-tokens", queryCmd.Flags().Lookup("max-tokens"))
 }
 
-// topicCmd fetches a full topic file by name.
-var topicCmd = &cobra.Command{
-	Use:   "topic <lib> <topic>",
-	Short: "Full topic content by name",
-	Long: `Fetches the full condensed content for a specific topic file.
-Use 'coderank topics <lib>' to see available topic names.
+func runQuery(cmd *cobra.Command, args []string) error {
+	query := strings.Join(args, " ")
+	maxTokens := viper.GetInt("max-tokens")
+	library, _ := cmd.Flags().GetString("library")
+	jsonOut := viper.GetBool("json")
 
-Examples:
-  coderank topic react hooks
-  coderank topic zod validation
-  coderank topic express routing`,
-	Args: cobra.ExactArgs(2),
-	RunE: runTopic,
-}
-
-// searchCmd performs a semantic keyword search across a library's docs.
-var searchCmd = &cobra.Command{
-	Use:   "search <lib> <keyword>",
-	Short: "Semantic search across a library's docs",
-	Long: `Performs semantic search over a library's condensed documentation
-and returns the top 3 most relevant results.
-
-Examples:
-  coderank search react "server components"
-  coderank search prisma "database transactions"
-  coderank search zod "async validation"`,
-	Args: cobra.ExactArgs(2),
-	RunE: runSearch,
-}
-
-// gotchasCmd fetches gotcha/pitfall sections for a specific API.
-var gotchasCmd = &cobra.Command{
-	Use:   "gotchas <lib> <api-name>",
-	Short: "Common pitfalls and gotchas for an API",
-	Long: `Fetches the gotchas, pitfalls, and common mistakes for a specific API.
-Useful when you know what to build but want to avoid the sharp edges.
-
-Examples:
-  coderank gotchas react useEffect
-  coderank gotchas prisma transactions
-  coderank gotchas zod union`,
-	Args: cobra.ExactArgs(2),
-	RunE: runGotchas,
-}
-
-// topicsCmd lists available topics for a library.
-var topicsCmd = &cobra.Command{
-	Use:   "topics <lib>",
-	Short: "List available topics for a library",
-	Long: `Lists all available topic files for a library. Use these names
-with 'coderank topic <lib> <topic>' to fetch full content.
-
-Examples:
-  coderank topics react
-  coderank topics zod
-  coderank topics express`,
-	Args: cobra.ExactArgs(1),
-	RunE: runTopics,
-}
-
-func runTopic(cmd *cobra.Command, args []string) error {
-	lib, topic := args[0], args[1]
+	// Offline mode — only cache, no API call
+	if viper.GetBool("offline") {
+		return fmt.Errorf("no cached docs for %q — run 'coderank cache' first", query)
+	}
 
 	client, err := api.NewClient(viper.GetString("api-url"))
 	if err != nil {
 		return err
 	}
 
-	resp, err := client.Topic(lib, topic)
-	if err != nil {
-		render.ErrorMsg("%s", err.Error())
-		return err
-	}
-
-	if IsRawMode() {
-		fmt.Print(resp.Content)
-		return nil
-	}
-
-	fmt.Print(render.DocHeader(resp.Library, resp.Version, resp.Topic, resp.Tokens, 0))
-	body := render.StripFrontmatter(resp.Content)
-	rendered, err := render.RenderMarkdown(body)
-	if err != nil {
-		fmt.Print(body)
-	} else {
-		fmt.Print(rendered)
-	}
-	return nil
-}
-
-func runSearch(cmd *cobra.Command, args []string) error {
-	lib, keyword := args[0], args[1]
-	maxTokens, _ := cmd.Flags().GetInt("max-tokens")
-
-	client, err := api.NewClient(viper.GetString("api-url"))
-	if err != nil {
-		return err
+	// Build config from .coderank.yml if present
+	var config *api.QueryConfig
+	preferred := viper.GetStringSlice("stack.preferred")
+	blocked := viper.GetStringSlice("stack.blocked")
+	if len(preferred) > 0 || len(blocked) > 0 {
+		config = &api.QueryConfig{
+			Preferred:        preferred,
+			Blocked:          blocked,
+			PreferTypeScript: viper.GetBool("context.prefer_typescript"),
+		}
 	}
 
 	resp, err := client.Query(api.QueryRequest{
-		Q:         keyword,
+		Q:         query,
 		MaxTokens: maxTokens,
-		Library:   lib,
-	})
-	if err != nil {
-		render.ErrorMsg("%s", err.Error())
-		return err
-	}
-
-	return printQueryResponse(resp)
-}
-
-func runGotchas(cmd *cobra.Command, args []string) error {
-	lib, apiName := args[0], args[1]
-
-	client, err := api.NewClient(viper.GetString("api-url"))
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.Query(api.QueryRequest{
-		Q:         apiName + " gotchas pitfalls common mistakes edge cases",
-		MaxTokens: 3000,
-		Library:   lib,
+		Library:   library,
+		Config:    config,
 	})
 	if err != nil {
 		render.ErrorMsg("%s", err.Error())
@@ -150,40 +81,46 @@ func runGotchas(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(resp.Results) == 0 {
-		fmt.Print(render.WarningMsg("No gotchas found for " + apiName))
+		fmt.Print(render.WarningMsg("No documentation found for: " + query))
 		return nil
 	}
 
-	return printQueryResponse(resp)
-}
-
-func runTopics(cmd *cobra.Command, args []string) error {
-	lib := args[0]
-
-	client, err := api.NewClient(viper.GetString("api-url"))
-	if err != nil {
-		return err
+	// --json: structured output for programmatic use
+	if jsonOut {
+		data, _ := json.MarshalIndent(resp, "", "  ")
+		fmt.Println(string(data))
+		return nil
 	}
 
-	resp, err := client.Topics(lib)
-	if err != nil {
-		render.ErrorMsg("%s", err.Error())
-		return err
-	}
-
+	// --raw or piped: plain markdown to stdout, no chrome, no Glamour rendering.
+	// Agents consume this: coderank query --raw | ...
 	if IsRawMode() {
-		fmt.Println(strings.Join(resp.Topics, "\n"))
+		for _, result := range resp.Results {
+			fmt.Print(result.Content)
+			fmt.Println()
+		}
 		return nil
 	}
 
-	fmt.Print(render.DocHeader(resp.Library, resp.Version, "topics", 0, 0))
-	for _, topic := range resp.Topics {
-		fmt.Printf("  • %s\n", topic)
+	// Default: rendered markdown with Lip Gloss chrome
+	for _, result := range resp.Results {
+		fmt.Print(render.DocHeader(
+			result.Library, result.Version, result.Topic, result.Tokens, result.Score,
+		))
+		rendered, err := render.RenderMarkdown(result.Content)
+		if err != nil {
+			fmt.Print(result.Content)
+		} else {
+			fmt.Print(rendered)
+		}
 	}
+	fmt.Print(render.DocFooter(resp.TotalTokens, resp.QueryMs))
+
 	return nil
 }
 
 // printQueryResponse renders a QueryResponse in raw or styled mode.
+// Shared by query subcommands (gotchas, search).
 func printQueryResponse(resp *api.QueryResponse) error {
 	if len(resp.Results) == 0 {
 		fmt.Print(render.WarningMsg("No documentation found"))

@@ -6,87 +6,47 @@ package agents
 func RootSkillMD() string {
 	return `---
 name: coderank
-description: "Query condensed docs for 300+ libraries via coderank CLI. TRIGGER when: developer imports a third-party library, asks about an API, needs usage examples, or is debugging library-specific issues. DO NOT TRIGGER for standard library or general programming questions."
+description: Query condensed library docs via coderank CLI. Use when a developer imports or uses any third-party library, asks about an API signature, needs usage examples, hits a library-specific error, or is choosing between libraries. Do NOT use for standard library or general language questions.
 ---
 
-# CodeRank — Library Documentation for AI Agents
+# CodeRank — Library Documentation
 
-Query condensed, always-fresh documentation for any indexed library.
-Pre-processed for AI context windows: only signatures, usage patterns, gotchas, and migration notes.
+Condensed, token-efficient docs for 300+ libraries. Pre-processed for AI context:
+signatures, patterns, gotchas, migration notes only.
 
-## Documentation Commands
+## Which Command to Use
 
-` + "```" + `bash
-# Query a specific API — returns signatures, usage, gotchas
-coderank query <library> "<api or question>"
-# Examples:
-#   coderank query react "useCallback vs useMemo"
-#   coderank query express "error handling middleware"
-#   coderank query gin "route grouping"
+| Need | Command |
+|------|---------|
+| API signatures, usage, questions | ` + "`coderank query <lib> \"<question>\"`" + ` |
+| Full topic deep-dive | ` + "`coderank topic <lib> <topic>`" + ` |
+| List available topics | ` + "`coderank topics <lib>`" + ` |
+| All public API signatures | ` + "`coderank surface <lib>`" + ` |
+| Common pitfalls for an API | ` + "`coderank gotchas <lib> <api>`" + ` |
+| Library health / maintenance | ` + "`coderank health <lib>`" + ` |
+| Compare libraries | ` + "`coderank compare \"<category>\"`" + ` |
+| Install per-library skill | ` + "`coderank install <lib>`" + ` |
 
-# Get full topic content by name
-coderank query <library> <topic>
-# Examples:
-#   coderank query react hooks
-#   coderank query prisma migrations
-
-# Show compact API surface (all public signatures)
-coderank surface <library>
-
-# Get health score and maintenance status
-coderank health <library>
-
-# Compare libraries in a category
-coderank compare <category>
-# Examples:
-#   coderank compare "react state management"
-` + "```" + `
-
-## Agent Integration Commands
+## Commands
 
 ` + "```" + `bash
-# Install CodeRank skill into detected AI coding agents (run once per project)
-coderank install
-coderank install --global                        # Install to all projects
-coderank install --with-surfaces react,express   # Also add per-library API surfaces
-coderank install --agents claude,cursor          # Target specific agents
-coderank install --dry-run                       # Preview without writing files
-
-# Pre-inject API surfaces into agent context (ambient docs before agent starts)
-coderank inject react express typescript
-coderank inject --target claude                  # Target specific agent
-coderank inject --global                         # Write to global context
+coderank query react "useCallback vs useMemo"
+coderank query prisma "how do migrations work" --max-tokens 3000
+coderank topic react hooks
+coderank topics prisma
+coderank surface zod
+coderank gotchas react useEffect
+coderank health lodash
+coderank compare "react state management"
+coderank install react
+coderank install react express zod
 ` + "```" + `
 
-## Setup Commands
+## Rules
 
-` + "```" + `bash
-# Authenticate with API key
-coderank auth <api-key>
-
-# Log in via browser
-coderank login
-
-# Manage offline cache
-coderank cache sync <library>    # Download for offline use
-coderank cache list              # Show cached libraries
-coderank cache clear <library>   # Remove from cache
-` + "```" + `
-
-## When to Use
-
-- **Developer imports a library** → ` + "`coderank query`" + ` for the API they're using
-- **Working in a feature area** → ` + "`coderank query`" + ` for grouped context
-- **Need all public APIs at a glance** → ` + "`coderank surface`" + ` for compact signatures
-- **Checking library quality** → ` + "`coderank health`" + ` for maintenance score
-- **Choosing between libraries** → ` + "`coderank compare`" + ` for ranked alternatives
-- **Setting up a new project** → ` + "`coderank inject`" + ` to pre-load stack docs into agent context
-
-## Notes
-
-- Output is plain markdown on stdout, errors on stderr
-- Queries hit pre-indexed docs (sub-second response, no live fetching)
-- Works offline for cached libraries (` + "`coderank cache sync`" + ` first)
-- Run ` + "`coderank install`" + ` once per project to keep skill docs current
+- **Always run ` + "`coderank query`" + ` before writing code that uses a third-party library** — never rely on training data for API signatures
+- **Run ` + "`coderank install <lib>`" + ` when heavily using a library** — installs an inline API surface so you don't need to query on every use
+- **Use ` + "`--raw`" + ` when piping output** — ` + "`coderank query react hooks --raw | ...`" + `
+- **Run ` + "`coderank health <lib>`" + ` before recommending a library** — surfaces deprecation and security issues
 `
 }
