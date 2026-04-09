@@ -12,22 +12,21 @@ import (
 )
 
 var queryCmd = &cobra.Command{
-	Use:   "query <query>",
+	Use:   "query <library> <question>",
 	Short: "Query condensed documentation for a library",
 	Long: `Queries the CodeRank API for condensed library documentation and renders
 it in the terminal with syntax-highlighted code blocks.
 
-The query is a natural language description of what you need. CodeRank
-finds the most relevant documentation files and assembles them within
-your token budget.
+The first argument is the library name — results are filtered to that library only.
+The remaining arguments form the natural language question.
 
 Examples:
-  coderank query "react hooks"
-  coderank query "nextjs middleware authentication" --max-tokens 3000
-  coderank query "prisma migrations" --library prisma
-  coderank query "react hooks" --raw | pbcopy     # pipe to clipboard
-  coderank query "react hooks" --json              # structured output`,
-	Args: cobra.MinimumNArgs(1),
+  coderank query react "useCallback vs useMemo"
+  coderank query prisma "how do migrations work" --max-tokens 3000
+  coderank query requests "how to set Content-Type to JSON"
+  coderank query react hooks --raw | pbcopy     # pipe to clipboard
+  coderank query zod "object schema" --json      # structured output`,
+	Args: cobra.MinimumNArgs(2),
 	RunE: runQuery,
 }
 
@@ -39,9 +38,13 @@ func init() {
 }
 
 func runQuery(cmd *cobra.Command, args []string) error {
-	query := strings.Join(args, " ")
+	library := args[0]
+	query := strings.Join(args[1:], " ")
 	maxTokens := viper.GetInt("max-tokens")
-	library, _ := cmd.Flags().GetString("library")
+	// --library flag overrides positional library arg if explicitly set
+	if flagLib, _ := cmd.Flags().GetString("library"); flagLib != "" {
+		library = flagLib
+	}
 	jsonOut := viper.GetBool("json")
 
 	// Offline mode — only cache, no API call
