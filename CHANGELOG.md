@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.4](https://github.com/coderank-dev/coderank/compare/v0.1.3...v0.1.4) (2026-04-09)
+
+
+### Bug Fixes
+
+* **query:** use first arg as library filter, not part of the query ([#49](https://github.com/coderank-dev/coderank/issues/49)) ([d3f6411](https://github.com/coderank-dev/coderank/commit/d3f6411e37c0280b3479c208202e44312746eb2e))
+* **skill:** restructure query+install as a mandatory 2-step workflow ([#48](https://github.com/coderank-dev/coderank/issues/48)) ([4152fa5](https://github.com/coderank-dev/coderank/commit/4152fa532e39ea48b17b329690012e6a990785a1))
+* **skills:** auto-install after query, ingest wiki after code changes ([#46](https://github.com/coderank-dev/coderank/issues/46)) ([604df31](https://github.com/coderank-dev/coderank/commit/604df31c1fe6baefca0b11f0075c434c15354522))
+* **skill:** strengthen coderank skill description to enforce mandatory trigger ([#50](https://github.com/coderank-dev/coderank/issues/50)) ([c96832d](https://github.com/coderank-dev/coderank/commit/c96832d8335c16f2a08246e037c61b7f2e97a9a1))
+
 ## [0.1.3](https://github.com/coderank-dev/coderank/compare/v0.1.2...v0.1.3) (2026-04-08)
 
 
