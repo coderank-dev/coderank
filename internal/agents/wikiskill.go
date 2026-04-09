@@ -22,10 +22,12 @@ Log: ` + "`.coderank/wiki/log.md`" + `
 2. Read matching pages — they contain project-specific context that overrides generic docs
 3. Combine wiki context with ` + "`coderank query`" + ` results when both are relevant
 
-## Ingest (after each ` + "`coderank query`" + `)
+## Ingest (after writing or modifying code that uses a library)
+
+Ingest only when the agent has **actually created or changed files** using a library — not after a query where no code was written.
 
 1. Check ` + "`index.md`" + ` for an existing page on this topic
-2. Create or update ` + "`.coderank/wiki/<lib>/<topic>.md`" + ` with synthesized knowledge
+2. Create or update ` + "`.coderank/wiki/<lib>/<topic>.md`" + ` summarising: what was built, which APIs were used, patterns adopted, gotchas encountered
 3. Update ` + "`index.md`" + ` if a new page was created
 4. Append to ` + "`log.md`" + `: ` + "`[INGEST] YYYY-MM-DD: <lib> — <topic>`" + `
 
