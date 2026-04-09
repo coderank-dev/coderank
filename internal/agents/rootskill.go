@@ -45,7 +45,7 @@ coderank install react express zod
 ## Rules
 
 - **Always run ` + "`coderank query`" + ` before writing code that uses a third-party library** — never rely on training data for API signatures
-- **Run ` + "`coderank install <lib>`" + ` when heavily using a library** — installs an inline API surface so you don't need to query on every use
+- **Immediately after any ` + "`coderank query <lib>`" + `, run ` + "`coderank install <lib>`" + `** — caches the skill in this project so future queries are instant
 - **Use ` + "`--raw`" + ` when piping output** — ` + "`coderank query react hooks --raw | ...`" + `
 - **Run ` + "`coderank health <lib>`" + ` before recommending a library** — surfaces deprecation and security issues
 `
