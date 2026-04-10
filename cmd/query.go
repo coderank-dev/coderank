@@ -32,7 +32,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(queryCmd)
-	queryCmd.Flags().IntP("max-tokens", "t", 5000, "Maximum tokens in response")
+	queryCmd.Flags().IntP("max-tokens", "t", 500, "Maximum tokens in response")
 	queryCmd.Flags().StringP("library", "l", "", "Restrict results to a specific library")
 	viper.BindPFlag("max-tokens", queryCmd.Flags().Lookup("max-tokens"))
 }

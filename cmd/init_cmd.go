@@ -90,7 +90,7 @@ func init() {
 	initCmd.Flags().String("framework", "", "Framework (nextjs, react, gin, fastapi, etc.)")
 	initCmd.Flags().StringSlice("preferred", nil, "Preferred libraries")
 	initCmd.Flags().StringSlice("blocked", nil, "Blocked libraries")
-	initCmd.Flags().Int("max-tokens", 5000, "Default token budget per query")
+	initCmd.Flags().Int("max-tokens", 500, "Default token budget per query")
 	initCmd.Flags().Bool("no-wiki", false, "Skip wiki setup")
 }
 
