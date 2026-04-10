@@ -20,6 +20,6 @@ func TestQueryCommandAcceptsMultipleWords(t *testing.T) {
 
 func TestQueryDefaultMaxTokens(t *testing.T) {
 	flag := queryCmd.Flags().Lookup("max-tokens")
-	assert.Equal(t, "5000", flag.DefValue,
-		"default max-tokens should be 5000")
+	assert.Equal(t, "0", flag.DefValue,
+		"default max-tokens flag is 0 (resolved at runtime from config or hardcoded 500)")
 }

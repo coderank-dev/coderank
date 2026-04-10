@@ -96,14 +96,28 @@ func runInstall(cmd *cobra.Command, args []string) error {
 			fmt.Fprintf(os.Stderr, "  ✗ %s: %v\n", lib, err)
 			continue
 		}
+
+		// Fetch the API surface to install alongside the skill.
+		surface, err := apiClient.Surface(lib)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "  ✗ %s (surface): %v\n", lib, err)
+			continue
+		}
+
 		for _, agent := range targetAgents {
-			path := agents.SkillPath(projectRoot, agent, lib, global)
+			skillPath := agents.SkillPath(projectRoot, agent, lib, global)
+			surfacePath := strings.TrimSuffix(skillPath, "SKILL.md") + "api-surface.md"
 			if dryRun {
-				fmt.Fprintf(os.Stderr, "  [dry-run] %s → %s\n", lib, path)
+				fmt.Fprintf(os.Stderr, "  [dry-run] %s → %s\n", lib, skillPath)
+				fmt.Fprintf(os.Stderr, "  [dry-run] %s → %s\n", lib, surfacePath)
 				continue
 			}
-			if err := agents.WriteSkill(path, skillContent); err != nil {
-				fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, lib, err)
+			if err := agents.WriteSkill(skillPath, skillContent); err != nil {
+				fmt.Fprintf(os.Stderr, "  ✗ %s/%s SKILL.md: %v\n", agent.ID, lib, err)
+				continue
+			}
+			if err := agents.WriteSkill(surfacePath, surface.Content); err != nil {
+				fmt.Fprintf(os.Stderr, "  ✗ %s/%s api-surface.md: %v\n", agent.ID, lib, err)
 				continue
 			}
 			installed++
