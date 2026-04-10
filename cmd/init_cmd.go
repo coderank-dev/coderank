@@ -115,7 +115,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	config := CodeRankConfig{
 		Context: ContextConfig{
-			MaxTokens:        5000,
+			MaxTokens:        500,
 			IncludeMigration: true,
 			IncludeExamples:  true,
 		},

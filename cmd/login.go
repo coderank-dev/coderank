@@ -144,11 +144,13 @@ func saveLoginCredentials(key, apiURL string) error {
 		return fmt.Errorf("writing credentials: %w", err)
 	}
 
-	// Persist a custom api-url so subsequent commands use the right endpoint
+	// Persist a custom api-url so subsequent commands use the right endpoint.
+	// Write only the api-url key — not the full viper state — to avoid
+	// polluting the global config with flag defaults.
 	if apiURL != "" {
-		viper.Set("api-url", apiURL)
 		configPath := filepath.Join(credDir, ".coderank.yml")
-		if err := viper.WriteConfigAs(configPath); err != nil {
+		data := fmt.Sprintf("api-url: %s\n", apiURL)
+		if err := os.WriteFile(configPath, []byte(data), 0600); err != nil {
 			return fmt.Errorf("saving api-url to config: %w", err)
 		}
 	}

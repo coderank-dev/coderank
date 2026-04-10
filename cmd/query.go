@@ -32,7 +32,7 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(queryCmd)
-	queryCmd.Flags().IntP("max-tokens", "t", 500, "Maximum tokens in response")
+	queryCmd.Flags().IntP("max-tokens", "t", 0, "Maximum tokens in response (default: from .coderank.yml context.max_tokens, or 500)")
 	queryCmd.Flags().StringP("library", "l", "", "Restrict results to a specific library")
 	viper.BindPFlag("max-tokens", queryCmd.Flags().Lookup("max-tokens"))
 }
@@ -40,7 +40,14 @@ func init() {
 func runQuery(cmd *cobra.Command, args []string) error {
 	library := args[0]
 	query := strings.Join(args[1:], " ")
+	// Resolve max_tokens: --max-tokens flag > .coderank.yml context.max_tokens > default 500
 	maxTokens := viper.GetInt("max-tokens")
+	if maxTokens == 0 {
+		maxTokens = viper.GetInt("context.max_tokens")
+	}
+	if maxTokens == 0 {
+		maxTokens = 500
+	}
 	// --library flag overrides positional library arg if explicitly set
 	if flagLib, _ := cmd.Flags().GetString("library"); flagLib != "" {
 		library = flagLib
