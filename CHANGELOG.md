@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.5](https://github.com/coderank-dev/coderank/compare/v0.1.4...v0.1.5) (2026-04-14)
+
+
+### Features
+
+* add CLI self-update and background version check ([#53](https://github.com/coderank-dev/coderank/issues/53)) ([e79745f](https://github.com/coderank-dev/coderank/commit/e79745f5c5598ced9f02ffeaaccd9b2a81cb8ccc))
+* install writes api-surface.md, fix max-tokens cascade, login config ([#51](https://github.com/coderank-dev/coderank/issues/51)) ([aecbf0c](https://github.com/coderank-dev/coderank/commit/aecbf0cfb58f47f4f40ddbf3a4a9e12afa6207cf))
+
 ## [0.1.4](https://github.com/coderank-dev/coderank/compare/v0.1.3...v0.1.4) (2026-04-09)
 
 
