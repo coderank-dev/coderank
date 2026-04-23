@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.6](https://github.com/coderank-dev/coderank/compare/v0.1.5...v0.1.6) (2026-04-23)
+
+
+### Features
+
+* **harness:** research-grounded skill activation + wiki CLI + hooks ([#54](https://github.com/coderank-dev/coderank/issues/54)) ([0a963a1](https://github.com/coderank-dev/coderank/commit/0a963a12ae9364798f042b2d0b3ba302d20ba073))
+
 ## [0.1.5](https://github.com/coderank-dev/coderank/compare/v0.1.4...v0.1.5) (2026-04-14)
 
 
