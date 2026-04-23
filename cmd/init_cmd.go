@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/huh"
 	"github.com/coderank-dev/coderank/internal/agents"
+	"github.com/coderank-dev/coderank/internal/hooks"
 	"github.com/coderank-dev/coderank/internal/render"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
@@ -92,11 +93,15 @@ func init() {
 	initCmd.Flags().StringSlice("blocked", nil, "Blocked libraries")
 	initCmd.Flags().Int("max-tokens", 500, "Default token budget per query")
 	initCmd.Flags().Bool("no-wiki", false, "Skip wiki setup")
+	initCmd.Flags().Bool("no-hooks", false, "Skip installing Claude Code hooks into .claude/settings.json")
+	initCmd.Flags().Bool("inject", false, "Run `coderank inject` after init to pre-load library docs (non-interactive mode)")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
 	nonInteractive, _ := cmd.Flags().GetBool("non-interactive")
 	noWiki, _ := cmd.Flags().GetBool("no-wiki")
+	noHooks, _ := cmd.Flags().GetBool("no-hooks")
+	runInjectFlag, _ := cmd.Flags().GetBool("inject")
 
 	// Check for existing config
 	if _, err := os.Stat(".coderank.yml"); err == nil {
@@ -133,6 +138,7 @@ func runInit(cmd *cobra.Command, args []string) error {
 		},
 	}
 
+	shouldInject := runInjectFlag
 	if nonInteractive {
 		config.Stack.Language, _ = cmd.Flags().GetString("language")
 		config.Stack.Framework, _ = cmd.Flags().GetString("framework")
@@ -193,6 +199,25 @@ func runInit(cmd *cobra.Command, args []string) error {
 		if language == "typescript" {
 			config.Context.PreferTypeScript = true
 		}
+
+		// Final, visible step: offer to pre-load library docs via coderank inject.
+		// Skipped when there are no preferred libraries (nothing to inject).
+		if len(config.Stack.Preferred) > 0 {
+			inject := true
+			if err := huh.NewForm(
+				huh.NewGroup(
+					huh.NewConfirm().
+						Title("Pre-load library docs into your agent's context now?").
+						Description("Runs `coderank inject` for your preferred libraries so the agent sees their API surfaces from turn 1. Requires auth (coderank auth).").
+						Affirmative("Yes, inject now").
+						Negative("Skip for now").
+						Value(&inject),
+				),
+			).Run(); err != nil {
+				return err
+			}
+			shouldInject = inject
+		}
 	}
 
 	// Write .coderank.yml
@@ -215,6 +240,34 @@ func runInit(cmd *cobra.Command, args []string) error {
 	// Install skills into detected agents
 	if err := installSkills(noWiki); err != nil {
 		return fmt.Errorf("installing skills: %w", err)
+	}
+
+	// Install Claude Code hooks so wiki-maintenance reminders fire
+	// deterministically on user prompts and code edits. Opt-out via --no-hooks.
+	if !noHooks {
+		if err := installHooks(); err != nil {
+			fmt.Fprintf(os.Stderr, "  ⚠ hook installation skipped: %v\n", err)
+		}
+	}
+
+	// Optionally run coderank inject to pre-load library docs. Failure is
+	// logged but does not fail init - the config/wiki/skills/hooks above
+	// already succeeded.
+	injected := false
+	if shouldInject && len(config.Stack.Preferred) > 0 {
+		fmt.Println()
+		if err := runInjectWith(".", config.Stack.Preferred, "", false, false); err != nil {
+			fmt.Fprintf(os.Stderr, "\n  ⚠ inject failed: %v\n", err)
+			fmt.Fprintln(os.Stderr, "  Run 'coderank auth' if needed, then 'coderank inject' to retry.")
+		} else {
+			injected = true
+		}
+	}
+
+	if !injected {
+		fmt.Println()
+		fmt.Print(render.Subtle.Render(
+			"Tip: pre-load library docs with `coderank inject` to make them available in every agent turn without requiring a query.\n"))
 	}
 
 	return nil
@@ -241,14 +294,17 @@ func setupWiki() error {
 	return nil
 }
 
-// installSkills installs the root skill and optionally the wiki skill
-// into all detected AI agents in the current project.
+// installSkills installs the root and (optionally) wiki skills into every
+// detected AI agent. Emission is format-dispatched via agents.EmitSkill:
+// SkillMD agents get a folder+SKILL.md, single-file agents get a marker
+// section in their shared file, Cursor gets a .mdc rule. Per-agent errors are
+// logged but do not abort the batch - other agents proceed.
 func installSkills(noWiki bool) error {
 	projectRoot, _ := os.Getwd()
-	detectedAgents := agents.Detect(projectRoot)
+	detectedAgents := agents.Detect(projectRoot, agents.ScopeProject)
 
 	if len(detectedAgents) == 0 {
-		fmt.Print(render.WarningMsg("No AI agents detected — skipping skill installation"))
+		fmt.Print(render.WarningMsg("No AI agents detected - skipping skill installation"))
 		fmt.Fprintln(os.Stderr, "  Run 'coderank install <lib>' manually after setting up an agent.")
 		return nil
 	}
@@ -257,26 +313,42 @@ func installSkills(noWiki bool) error {
 	for i, a := range detectedAgents {
 		agentNames[i] = a.Name
 	}
-	fmt.Fprintf(os.Stderr, "Installing skills → %s\n", strings.Join(agentNames, ", "))
+	fmt.Fprintf(os.Stderr, "Installing skills -> %s\n", strings.Join(agentNames, ", "))
 
 	rootContent := agents.RootSkillMD()
 	wikiContent := agents.WikiSkillMD()
 
 	for _, agent := range detectedAgents {
-		rootPath := agents.SkillPath(projectRoot, agent, agents.RootSkillName, false)
-		if err := agents.WriteSkill(rootPath, rootContent); err != nil {
+		if err := agents.EmitSkill(projectRoot, agent, agents.ScopeProject, agents.RootSkillName, rootContent); err != nil {
 			fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, agents.RootSkillName, err)
 		}
-
 		if !noWiki {
-			wikiPath := agents.SkillPath(projectRoot, agent, agents.WikiSkillName, false)
-			if err := agents.WriteSkill(wikiPath, wikiContent); err != nil {
+			if err := agents.EmitSkill(projectRoot, agent, agents.ScopeProject, agents.WikiSkillName, wikiContent); err != nil {
 				fmt.Fprintf(os.Stderr, "  ✗ %s/%s: %v\n", agent.ID, agents.WikiSkillName, err)
 			}
 		}
 	}
 
 	fmt.Print(render.SuccessMsg("Installed CodeRank skills"))
+	return nil
+}
+
+// installHooks writes coderank wiki hook entries into .claude/settings.json,
+// preserving any existing content. Idempotent: re-running init updates the
+// coderank-managed entries in place without touching user or third-party
+// hooks. Hook commands reference the `coderank` binary on the user's PATH.
+func installHooks() error {
+	settingsPath := filepath.Join(".claude", "settings.json")
+	s, err := hooks.Load(settingsPath)
+	if err != nil {
+		return fmt.Errorf("reading %s: %w", settingsPath, err)
+	}
+	s.AddCoderankHook(hooks.EventUserPromptSubmit, "", "coderank wiki hook user-prompt")
+	s.AddCoderankHook(hooks.EventPostToolUse, "Edit|Write|MultiEdit", "coderank wiki hook post-edit")
+	if err := s.Save(settingsPath); err != nil {
+		return fmt.Errorf("writing %s: %w", settingsPath, err)
+	}
+	fmt.Print(render.SuccessMsg("Installed Claude Code hooks (.claude/settings.json)"))
 	return nil
 }
 

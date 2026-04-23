@@ -8,6 +8,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/coderank-dev/coderank/internal/agents"
 	"github.com/coderank-dev/coderank/internal/api"
 	"github.com/coderank-dev/coderank/internal/inject"
 	"github.com/coderank-dev/coderank/internal/render"
@@ -48,16 +49,14 @@ func init() {
 }
 
 func runInject(cmd *cobra.Command, args []string) error {
-	projectDir := "."
 	target, _ := cmd.Flags().GetString("target")
 	watch, _ := cmd.Flags().GetBool("watch")
+	withSurface, _ := cmd.Flags().GetBool("surface")
 
-	// Determine which libraries to inject
 	var libraries []string
 	if len(args) > 0 {
 		libraries = args
 	} else {
-		// Read from .coderank.yml preferred list
 		libraries = viper.GetStringSlice("stack.preferred")
 		if len(libraries) == 0 {
 			return fmt.Errorf(
@@ -67,16 +66,23 @@ func runInject(cmd *cobra.Command, args []string) error {
 		}
 	}
 
+	return runInjectWith(".", libraries, target, watch, withSurface)
+}
+
+// runInjectWith executes an inject cycle against explicit libraries. Used by
+// `coderank init --inject` (and the interactive wizard) to trigger inject
+// without going through Cobra flag parsing a second time.
+func runInjectWith(projectDir string, libraries []string, target string, watch, withSurface bool) error {
 	// Detect or override agent targets
-	var agents []inject.Agent
+	var targets []agents.Agent
 	if target != "" {
 		agent, err := inject.TargetForAgent(target)
 		if err != nil {
 			return err
 		}
-		agents = []inject.Agent{agent}
+		targets = []agents.Agent{agent}
 	} else {
-		agents = inject.DetectAgents(projectDir)
+		targets = inject.DetectAgents(projectDir)
 	}
 
 	// Fetch API surfaces from the API
@@ -84,8 +90,6 @@ func runInject(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	withSurface, _ := cmd.Flags().GetBool("surface")
 
 	fmt.Println(render.Title.Render("Injecting stack skills..."))
 	fmt.Println()
@@ -139,35 +143,35 @@ func runInject(cmd *cobra.Command, args []string) error {
 
 	// Write to each detected agent
 	fmt.Println()
-	for _, agent := range agents {
+	for _, agent := range targets {
 		if err := inject.WriteContext(projectDir, agent, content); err != nil {
 			fmt.Printf("  %s %s: %s\n", render.Error.Render("✗"), agent.Name, err)
 			continue
 		}
-		fmt.Printf("  %s %s → %s\n",
-			render.Success.Render("✓"), agent.Name, agent.ContextPath)
+		fmt.Printf("  %s %s -> %s\n",
+			render.Success.Render("✓"), agent.Name, agent.InjectContextPath())
 	}
 
 	fmt.Printf("\n%s\n", render.Subtle.Render(
-		fmt.Sprintf("─── %d libraries · %d tokens · %d agents ───",
-			len(libraries), totalTokens, len(agents)),
+		fmt.Sprintf("--- %d libraries · %d tokens · %d agents ---",
+			len(libraries), totalTokens, len(targets)),
 	))
 
 	// Suggest gitignore entries for generated context files
 	fmt.Println()
 	fmt.Println(render.Subtle.Render(
 		"Tip: Add injected files to .gitignore (they're generated, not source):"))
-	for _, agent := range agents {
-		// Only suggest for dedicated files, not shared ones (AGENTS.md, .windsurfrules)
-		if agent.Name != "Codex" && agent.Name != "Windsurf" {
+	for _, agent := range targets {
+		// Only suggest for dedicated files, not shared single-file agents.
+		if agent.Project.Format != agents.FormatSingleMarkerFile {
 			fmt.Println(render.Subtle.Render(
-				"  echo '" + agent.ContextPath + "' >> .gitignore"))
+				"  echo '" + agent.InjectContextPath() + "' >> .gitignore"))
 		}
 	}
 
 	// Watch mode
 	if watch {
-		return runWatch(projectDir, libraries, agents, client)
+		return runWatch(projectDir, libraries, targets, client)
 	}
 
 	return nil
@@ -175,7 +179,7 @@ func runInject(cmd *cobra.Command, args []string) error {
 
 // runWatch starts the file watcher and re-injects on dependency changes.
 // Runs until interrupted with Ctrl+C.
-func runWatch(projectDir string, libraries []string, agents []inject.Agent, client *api.Client) error {
+func runWatch(projectDir string, libraries []string, targets []agents.Agent, client *api.Client) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -219,7 +223,7 @@ func runWatch(projectDir string, libraries []string, agents []inject.Agent, clie
 			TotalTokens: totalTokens,
 		}
 
-		for _, agent := range agents {
+		for _, agent := range targets {
 			if err := inject.WriteContext(projectDir, agent, content); err != nil {
 				fmt.Printf("  %s %s: %s\n", render.Error.Render("✗"), agent.Name, err)
 			}

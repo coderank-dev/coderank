@@ -5,23 +5,31 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/coderank-dev/coderank/internal/agents"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+func agentByID(t *testing.T, id string) agents.Agent {
+	t.Helper()
+	found, _ := agents.FindByIDs([]string{id})
+	require.Len(t, found, 1, "agent %s must exist in KnownAgents", id)
+	return found[0]
+}
+
 func TestWriteContextCreatesNewFile(t *testing.T) {
 	dir := t.TempDir()
-	agent := Agent{Name: "Claude Code", ContextPath: ".claude/context/coderank-stack.md"}
+	agent := agentByID(t, "claude")
 	content := ContextContent{
 		Libraries:   []string{"react@19.1", "prisma@6.0"},
-		Body:        "# React 19.1 — API Surface\n...\n",
+		Body:        "# React 19.1 - API Surface\n...\n",
 		TotalTokens: 1500,
 	}
 
 	err := WriteContext(dir, agent, content)
 	require.NoError(t, err)
 
-	written, err := os.ReadFile(filepath.Join(dir, agent.ContextPath))
+	written, err := os.ReadFile(filepath.Join(dir, agent.InjectContextPath()))
 	require.NoError(t, err)
 	assert.Contains(t, string(written), "react@19.1, prisma@6.0",
 		"header should list all injected libraries")
@@ -34,25 +42,24 @@ func TestWriteContextCreatesNewFile(t *testing.T) {
 func TestWriteContextReplacesMarkerSection(t *testing.T) {
 	dir := t.TempDir()
 
-	// Simulate an existing AGENTS.md with other content + old CodeRank section
 	agentsPath := filepath.Join(dir, "AGENTS.md")
 	existingContent := `# My Agent Rules
 
 Some custom rules here.
 
-<!-- coderank:start -->
+` + agents.MarkerStart + `
 <!-- old content -->
 # Old API Surface
-<!-- coderank:end -->
+` + agents.MarkerEnd + `
 
 More custom rules.
 `
 	require.NoError(t, os.WriteFile(agentsPath, []byte(existingContent), 0644))
 
-	agent := Agent{Name: "Codex", ContextPath: "AGENTS.md"}
+	agent := agentByID(t, "codex")
 	content := ContextContent{
 		Libraries:   []string{"hono@4.0"},
-		Body:        "# Hono 4.0 — API Surface\n",
+		Body:        "# Hono 4.0 - API Surface\n",
 		TotalTokens: 800,
 	}
 
@@ -75,14 +82,13 @@ More custom rules.
 func TestWriteContextAppendsToFileWithoutMarkers(t *testing.T) {
 	dir := t.TempDir()
 
-	// Existing .windsurfrules with no CodeRank section
 	rulesPath := filepath.Join(dir, ".windsurfrules")
 	require.NoError(t, os.WriteFile(rulesPath, []byte("# Existing rules\n"), 0644))
 
-	agent := Agent{Name: "Windsurf", ContextPath: ".windsurfrules"}
+	agent := agentByID(t, "windsurf")
 	content := ContextContent{
 		Libraries:   []string{"zod@3.24"},
-		Body:        "# Zod 3.24 — API Surface\n",
+		Body:        "# Zod 3.24 - API Surface\n",
 		TotalTokens: 500,
 	}
 
@@ -96,4 +102,21 @@ func TestWriteContextAppendsToFileWithoutMarkers(t *testing.T) {
 		"original content should be preserved")
 	assert.Contains(t, str, "Zod 3.24",
 		"CodeRank content should be appended")
+}
+
+func TestWriteContextWritesGenericFallbackToDotCoderank(t *testing.T) {
+	dir := t.TempDir()
+	agent := agents.GenericAgent()
+	content := ContextContent{
+		Libraries:   []string{"react@19.1"},
+		Body:        "body",
+		TotalTokens: 100,
+	}
+
+	require.NoError(t, WriteContext(dir, agent, content))
+
+	written, err := os.ReadFile(filepath.Join(dir, ".coderank/stack.md"))
+	require.NoError(t, err)
+	assert.Contains(t, string(written), "body")
+	assert.Contains(t, string(written), "react@19.1")
 }

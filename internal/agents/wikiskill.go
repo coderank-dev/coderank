@@ -2,62 +2,113 @@ package agents
 
 // WikiSkillMD returns the content of the per-project CodeRank wiki skill.
 // Installed by 'coderank init' into detected agents. Instructs the agent
-// to maintain and consult a project-local knowledge base at .coderank/wiki/.
+// to maintain and consult a project-local knowledge base at .coderank/wiki/
+// using the `coderank wiki` CLI commands. Each workflow step is a single
+// deterministic tool call rather than a multi-step markdown-editing ritual.
 func WikiSkillMD() string {
 	return `---
 name: coderank-wiki
-description: Project knowledge base built from coderank queries in this project. Contains project-specific library patterns, decisions, and gotchas. Consult before answering any library question — wiki pages reflect actual project decisions and override generic docs.
-user-invocable: false
+description: Consult and maintain the project-specific knowledge wiki at .coderank/wiki/. ALWAYS invoke in two situations: (1) BEFORE answering any question about a third-party library used in this project - wiki pages capture project-specific patterns, decisions, and gotchas that override generic docs; (2) AFTER writing or modifying code that adopts a new library, introduces a new pattern, resolves a library-specific bug, or makes an architectural decision - record what was done so the knowledge persists. Do not skip the ingest step when you have changed code that uses a library. Wiki content reflects actual project decisions and supersedes training data.
 ---
 
 # Project Wiki
 
-Location: ` + "`.coderank/wiki/`" + `
-Index: ` + "`.coderank/wiki/index.md`" + `
-Log: ` + "`.coderank/wiki/log.md`" + `
+A short, project-specific knowledge base at ` + "`.coderank/wiki/`" + `. Managed via the
+` + "`coderank wiki`" + ` CLI, not by editing markdown directly.
+
+## What belongs here (short, pointer-style entries)
+
+Wiki pages are NOT library documentation. They record how THIS project uses
+a library, with file pointers. Library docs are served by ` + "`coderank query <lib>`" + `;
+don't duplicate them here.
+
+A good page is 3-8 lines of body plus a ` + "`--refs`" + ` list pointing at the relevant
+source files:
+
+- one-sentence summary of the pattern or decision
+- list of key files (via ` + "`--refs`" + `, surfaced automatically in the page frontmatter)
+- any non-obvious gotcha, rename history, or constraint
+
+If you find yourself writing paragraphs of library explanation, stop -
+that's ` + "`coderank query`" + ` territory.
 
 ## Query (before answering library questions)
 
-1. Check ` + "`.coderank/wiki/index.md`" + ` for relevant pages
-2. Read matching pages — they contain project-specific context that overrides generic docs
-3. Combine wiki context with ` + "`coderank query`" + ` results when both are relevant
+Run these before answering any library question about this project:
 
-## Ingest (after writing or modifying code that uses a library)
+` + "```" + `bash
+coderank wiki list                   # see what pages exist
+coderank wiki read <lib> <topic>     # read a matching page
+` + "```" + `
 
-Ingest only when the agent has **actually created or changed files** using a library — not after a query where no code was written.
+Wiki pages reflect actual project decisions and may override generic library
+docs. If both apply, combine them in your answer.
 
-1. Check ` + "`index.md`" + ` for an existing page on this topic
-2. Create or update ` + "`.coderank/wiki/<lib>/<topic>.md`" + ` summarising: what was built, which APIs were used, patterns adopted, gotchas encountered
-3. Update ` + "`index.md`" + ` if a new page was created
-4. Append to ` + "`log.md`" + `: ` + "`[INGEST] YYYY-MM-DD: <lib> — <topic>`" + `
+## Ingest (after changing code that uses a library)
 
-Also ingest after: making an architectural decision, resolving a library-specific bug,
-adopting a new pattern.
+Run after: adopting a new library, introducing a new pattern, resolving a
+library-specific bug, or making an architectural decision that future agents
+should know about. Single atomic command:
 
-## Lint (when log.md has 20+ entries since last [LINT])
+` + "```" + `bash
+coderank wiki ingest \
+  --lib <library> \
+  --topic <short-topic-slug> \
+  --summary "one-to-three sentence summary" \
+  --refs "src/path/one.ts,src/path/two.ts" \
+  --description "one-line description for the index"
+` + "```" + `
 
-1. Check for contradictions between pages
-2. Flag pages referencing deprecated APIs
-3. Verify all pages listed in ` + "`index.md`" + ` exist on disk
-4. Append to ` + "`log.md`" + `: ` + "`[LINT] YYYY-MM-DD: <summary>`" + `
+For longer bodies, pipe via ` + "`--body-from-stdin`" + ` or read from a file with
+` + "`--body-from-file <path>`" + `. One invocation writes the page, updates index.md,
+and appends an [INGEST] entry to log.md.
 
-## Page Format
+Skip ingest only when the change does NOT represent new project knowledge -
+simple bug fixes in your own code, formatting, or refactors that don't change
+how a library is used.
+
+## Lint (periodic cleanup)
+
+When ` + "`log.md`" + ` has accumulated many [INGEST] entries without a recent [LINT],
+or when you suspect drift (pages referencing removed files, deprecated APIs),
+run:
+
+` + "```" + `bash
+coderank wiki lint
+` + "```" + `
+
+Lint scans for missing pages (listed but not on disk), orphans (on disk but
+not listed), and pages marked ` + "`status: deprecated`" + `. Returns non-zero when
+issues are found.
+
+## Page format (handled by the CLI - do not edit by hand)
+
+The CLI writes a frontmatter-prefixed markdown file like:
 
 ` + "```" + `markdown
 ---
-status: current | deprecated | under-review
-updated: YYYY-MM-DD
-related: []
+status: current
+updated: 2026-04-23
+related: [react/hooks]
+refs: [src/schemas/auth.ts, src/api/auth.ts]
+description: Auth schemas with discriminated unions
 ---
-# <Library> — <Topic>
-[synthesized knowledge from project usage]
+# zod - auth-schemas
+
+[body]
 ` + "```" + `
+
+You do not need to author this frontmatter yourself; ` + "`coderank wiki ingest`" + `
+renders it from flags. If you need to edit an existing page, re-ingest with
+the same ` + "`--lib`" + ` / ` + "`--topic`" + ` - the page is replaced, the index is updated in
+place, and the log gets a new entry.
 
 ## Rules
 
-- **Prefer wiki pages over generic knowledge** — they reflect actual project decisions
-- **Never duplicate generic library docs** — only capture what is project-specific or non-obvious
-- **Update existing pages rather than creating near-duplicates**
-- **One library + one topic per page**
+- Always query the wiki (` + "`coderank wiki list`" + `) before answering library questions
+- Always ingest after changing code that uses a library in a non-trivial way
+- Keep pages short and pointer-style; link to code via ` + "`--refs`" + `
+- Never edit ` + "`.coderank/wiki/index.md`" + ` or ` + "`log.md`" + ` by hand - the CLI manages them
+- One library + one topic per page
 `
 }
