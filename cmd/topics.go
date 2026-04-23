@@ -12,7 +12,6 @@ import (
 
 func init() {
 	rootCmd.AddCommand(topicCmd)
-	rootCmd.AddCommand(gotchasCmd)
 	rootCmd.AddCommand(topicsCmd)
 }
 
@@ -29,21 +28,6 @@ Examples:
   coderank topic express routing`,
 	Args: cobra.ExactArgs(2),
 	RunE: runTopic,
-}
-
-// gotchasCmd fetches gotcha/pitfall sections for a specific API.
-var gotchasCmd = &cobra.Command{
-	Use:   "gotchas <lib> <api-name>",
-	Short: "Common pitfalls and gotchas for an API",
-	Long: `Fetches the gotchas, pitfalls, and common mistakes for a specific API.
-Useful when you know what to build but want to avoid the sharp edges.
-
-Examples:
-  coderank gotchas react useEffect
-  coderank gotchas prisma transactions
-  coderank gotchas zod union`,
-	Args: cobra.ExactArgs(2),
-	RunE: runGotchas,
 }
 
 // topicsCmd lists available topics for a library.
@@ -89,32 +73,6 @@ func runTopic(cmd *cobra.Command, args []string) error {
 		fmt.Print(rendered)
 	}
 	return nil
-}
-
-func runGotchas(cmd *cobra.Command, args []string) error {
-	lib, apiName := args[0], args[1]
-
-	client, err := api.NewClient(viper.GetString("api-url"))
-	if err != nil {
-		return err
-	}
-
-	resp, err := client.Query(api.QueryRequest{
-		Q:         apiName + " gotchas pitfalls common mistakes edge cases",
-		MaxTokens: 3000,
-		Library:   lib,
-	})
-	if err != nil {
-		render.ErrorMsg("%s", err.Error())
-		return err
-	}
-
-	if len(resp.Results) == 0 {
-		fmt.Print(render.WarningMsg("No gotchas found for " + apiName))
-		return nil
-	}
-
-	return printQueryResponse(resp)
 }
 
 func runTopics(cmd *cobra.Command, args []string) error {
